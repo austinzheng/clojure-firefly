@@ -12,12 +12,18 @@
     [clj-time.coerce :as time-coerce]
     [clojure.string :as string]))
 
-; (def server1-conn {:pool {} :spec {}})
-; (defmacro wcar* [& body] `(car/wcar server1-conn ~@body))
-
 (defn not-found [] "404: not found")
 
-; Definition for post
+; TEMP --------
+(defn session-handler [req] (assoc req :session "MAI SESSION :3"))
+
+; Return a function that itself returns a pre-determined random number
+(defn get-randn-fn []
+	(let [rand-number (rand 1)]
+		(fn [] (str rand-number))))
+
+; /TEMP -------
+
 (html/deftemplate post-page "post.html" 
 	[post-dict]
 	[:title] (html/content [(:title post-dict) " HOME PAGE"])
@@ -25,41 +31,52 @@
 	[:span.date] (html/content (:date post-dict))
 	[:div.content] (html/html-content (:content post-dict)))
 
-; Definition for compose post page
-(html/deftemplate post-compose "new_post.html"
-	[post-dict])
+(html/deftemplate post-compose "compose.html"
+	[post-dict]
+	[:input.post-title] (if (contains? post-dict :post-title) (html/set-attr :value (:post-title post-dict)) (html/set-attr :unused "unused"))
+	[:input.post-id] (if (contains? post-dict :post-id) (html/set-attr :value (:post-id post-dict)) nil)
+	[:textarea.post-content] (if (contains? post-dict :post-content) (html/content (:post-content post-dict)) (html/set-attr :unused "unused"))
+	[:button.action-submit] (html/set-attr :name (if (contains? post-dict :post-id) "edit-post" "add-post"))
+	[:span.delete-button] (if (:should-show-delete post-dict) (html/html-content "<button name=\"delete\" type=\"submit\">Delete</button>") nil))
 
-
-; Get new post
-(defn get-composer
-	[session params]
-	(post-compose {}))
-
-(defn action-create-post
+(defn action-create-post! [session params]
 	"Create a post and save it to the database"
-	[session params]
-	(let [post-id (cbdb/add-post! (:post-title params) (:post-body params))]
+	(let [post-id (cbdb/add-post! (:post-title params) (:post-content params))]
 		(if post-id (apply str ["Post created. ID: " post-id]) "Couldn't create post!")))
 
-; Preview a post
-(defn action-create-preview
-	[session params]
+(defn action-edit-post! [session params]
+	"Edit an existing post"
+	(let [
+		new-title (:post-title params)
+		new-content (:post-content params)
+		post-id (:post-id params)]
+		(if (cbdb/edit-post! post-id new-title new-content) "Post edited." "Couldn't edit post!")))
+
+(defn action-create-preview [session params]
 	; Stuff to check the session
 	(if params (apply str (concat ["Params: "] params)) "No params, for some reason"))
 
-; Handle the user pressing the 'preview' or 'submit' buttons
-(defn handle-npsubmit
-	[session params]
-	(cond 
-		(contains? params :submit) (action-create-post session params)
-		(contains? params :preview) (action-create-preview session params)
-		:else "test"))
+(defn action-delete-post! [session post-id]
+	; Stuff to check the session
+	(if (cbdb/delete-post! post-id) "Post deleted" "Error deleting post"))
 
-; Some test stuff
-; Return a function that itself returns a pre-determined random number
-(defn get-randn-fn []
-	(let [rand-number (rand 1)]
-		(fn [] (str rand-number))))
+(defn handle-delete [session params]
+	(action-delete-post! session (:id params)))
+
+(defn handle-npsubmit [session params]
+	"Handle the user pressing the 'preview', 'delete', or 'submit' buttons on the compose page"
+	(cond 
+		(contains? params :add-post) (action-create-post! session params)
+		(contains? params :edit-post) (action-edit-post! session params)
+		(contains? params :preview) (action-create-preview session params)
+		(contains? params :delete) (action-delete-post! session (:post-id params)) 
+		:else (not-found)))
+
+(defn generate-edit-post-composer [post-id title content]
+	(reduce str (post-compose {:should-show-delete true, :post-id post-id, :post-title title, :post-content content})))
+
+(defn generate-new-post-composer []
+	(reduce str (post-compose {:should-show-delete false})))
 
 (defn generate-post [title date content]
 	"Given raw data from the database, generate the HTML for a single post"
@@ -70,42 +87,21 @@
 		; (println (apply str ["Content: " content]))
 		(reduce str (post-page post-map))))
 
-; Given a raw post ID, get the corresponding post
-; (defn get-post [raw_id] 
-; 	(let [id (cbutil/parse-int raw_id)] 
-; 		(if (= nil id)
-; 			{:status 500
-; 			 :body "Server has encountered an internal error" }
-; 			(string/join ["You requested post " id]))))
-(defn get-post [raw_id] 
+(defn get-post-composer [session post-id]
+	(if post-id 
+		(let [post-data (cbdb/get-post post-id)]
+			(if post-data
+				(generate-edit-post-composer post-id (:post-title post-data) (:post-content post-data))
+				"Bad post ID"))
+		(generate-new-post-composer)))
+
+(defn get-post [post-id] 
 	"Given a raw ID, retrieve a post from the database"
-	(let [post-data (cbdb/get-post raw_id)]
+	(let [post-data (cbdb/get-post post-id)]
 		(if post-data 
 			; (do (println post-data) (apply str post-data))
-			(generate-post (:post-title post-data) (:post-date post-data) (:post-body post-data))
+			(generate-post (:post-title post-data) (:post-date post-data) (:post-content post-data))
 			"Couldn't find the specified post")))
-
-(defn get-test [] 
-	(let [sample-post {:title "Test", 
-					   :date "1/2", 
-					   :content "Hello world, this is my <a href=\"http://www.google.com\">sample blog entry</a>.<br />
-		                        <pre>[LICrosslink sharedInstance].enabled = YES;\nBOOL test = NO;</pre>"}]
-		(reduce str (post-page sample-post))))
-
-(defn session-handler [req] (assoc req :session "MAI SESSION :3"))
-
-; Test stuff - DB
-; (defn get-from-db [dkey]
-; 	(let [dval (wcar* (car/get dkey))]
-; 		(if (= dval nil)
-; 			"key not found"
-; 			(apply str ["value for key " dkey " is " dval]))))
-
-; (defn set-in-db! [dkey dval]
-; 	(if (or (not dkey) (not dval)) false
-; 		(do (wcar* (car/set dkey dval))
-; 			(wcar* (car/bgsave))
-; 			true)))
 
 ; App routes
 (defroutes app-routes
@@ -116,13 +112,6 @@
   	 params :params} 
   	{:body (apply str [(:test session) " - session, id:" (:id params)]) 
   	 :session {:test "hello"}})
-
-  ; (GET "/dbadd/:dkey/:dval" 
-  ; 	[dkey, dval] 
-  ; 	(if (set-in-db! dkey dval) 
-  ; 		(apply str ["Set value '" dval "' for key '" dkey "'."]) 
-  ; 		"Unable to assoc key with value"))
-  ; (GET "/dbget/:dkey" [dkey] (get-from-db dkey))
 
   (GET "/test3" {session :session, params :params}
     {:body (if (contains? session :next) (apply (:next session) []) (apply str ["No session yet"]))
@@ -135,11 +124,19 @@
   	(get-post id))
 
   ; Admin panel
-  (GET "/admin/newpost" 
-  	{session :session, params :params}
-  	(get-composer session params))
+  (GET "/admin/edit/post/:id" 
+  	{session :session, params :params} 
+  	(get-post-composer session (:id params)))
 
-  (POST "/admin/npsubmit"
+  (GET "/admin/new/post" 
+  	{session :session, params :params}
+  	(get-post-composer session nil))
+
+  (GET "/admin/delete/post/:id" 
+  	{session :session, params :params} 
+  	(handle-delete session params))
+
+  (POST "/admin/submit/post"
   	{session :session, params :params}
   	(handle-npsubmit session params))
 

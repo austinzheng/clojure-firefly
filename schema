@@ -1,0 +1,24 @@
+POSTS are stored in the following manner:
+- List ("post-list"), consisting of post IDs. The order of the list determines the order of blog posts. Newest posts are at the front of the list.
+- Maps, each containing data on a given blog post. Maps are named "post:<id>", where <id> is the post ID of the post in question.
+  * :post-title, the title of the post
+  * :post-date, a long integer representing a clj-time object representing the creation time of the post
+  * :post-body, the contents of the post (in HTML format)
+  * :post-edited, a boolean stating whether or not the post has been edited
+  * :post-edit-date, a long integer representing a clj-time object representing the most recent edit time of the post
+
+LINKS are stored in the following manner:
+- List ("link-list"), consisting of a list of link category IDs. This is the order in which link categories are presented.
+- Lists, each containing a list of link IDs. Each list is named "links:<id>", where <id> is the link category ID of the links in the list.
+- Maps, each containing data on a given link. Maps are named "link:<id>", where <id> is the link ID of the link entry in question.
+  * :link-title, the name of the link
+  * :link-date, a long integer representing a clj-time object representing the creation time of the entry
+  * :link-url, the URL of the link
+  * :link-description, an HTML description of the link
+
+IMAGES are stored in the following manner:
+- Maps, each containing the image filenames for a given blog post. Maps are named "img:post:<id>", where <id> is the post ID of the post in question.
+
+TAGS are stored in the following manner:
+- Maps, each containing the tags for a given blog post. Maps are named "tag:post:<id>", where <id> is the post ID of the post in question.
+- Map ("tag-list"), whose keys are tag strings and whose values are a list of blog post IDs where that tag is used.
