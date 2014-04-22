@@ -16,9 +16,6 @@
 (defn- post-base-key [post-id] 
 	(apply str ["post:" post-id]))
 
-(defn- get-post-fn [post-id]
-	(fn [] (wcar* (car/parse-map (car/hgetall (post-base-key post-id))))))
-
 ; Post-related API
 (defn get-post [post-id]
 	"Get a blog post from redis based on the post ID, or nil if it doesn't exist." 
@@ -32,16 +29,21 @@
 	invalid, returns nil."
 	(let [
 		post-count (wcar* (car/llen :post-list))
-		adj-num-posts (min num-posts (post-count - start))
-		can-retrieve (and (> start 0) (< start post-count))]
+		adj-num-posts (min num-posts (- post-count start))
+		can-retrieve (and (>= start 0) (< start post-count))]
 		(if can-retrieve 
 			(let [
-				id-vector (wcar* (car/lrange :post-list start (+ start adj-num-posts)))
-				commands (map get-post-fn id-vector)] 
+				id-seq (seq (wcar* (car/lrange :post-list start (+ -1 start adj-num-posts))))
+				getter-func (defn gf [so-far remaining]
+					; Doing this recursively, because nested macros and map failed hilariously
+					(if (= remaining ()) 
+						so-far
+						(gf 
+							(cons (cbutil/map-function-on-map-keys (wcar* (car/parse-map (car/hgetall (post-base-key (first remaining))))) keyword) so-far) 
+							(rest remaining))))]
 				(try
-					(wcar* commands)
-					(catch Exception e nil))) 
-			nil)))
+					(gf [] (reverse id-seq))
+					(catch Exception e nil))))))
 
 (defn add-post! [post-title post-content]
 	"Add a new post to the database; returns the post ID, or nil if failed."

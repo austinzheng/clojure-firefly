@@ -9,8 +9,7 @@
     [ring.middleware.session :as session]
     [ring.adapter.jetty :as jetty]
     [clj-time.format :as time-format]
-    [clj-time.coerce :as time-coerce]
-    [clojure.string :as string]))
+    [clj-time.coerce :as time-coerce]))
 
 (defn not-found [] "404: not found")
 
@@ -24,12 +23,21 @@
 
 ; /TEMP -------
 
-(html/deftemplate post-page "post.html" 
+(html/defsnippet post-snippet "post-snippet.html" 
+	[:div.post]
 	[post-dict]
-	[:title] (html/content [(:title post-dict) " HOME PAGE"])
+	[:title] (html/content [(:title post-dict) " - Blog Post"])
 	[:h1] (html/content (:title post-dict))
 	[:span.date] (html/content (:date post-dict))
 	[:div.content] (html/html-content (:content post-dict)))
+
+(html/deftemplate post-page "post.html"
+	[post-dict]
+	[:div.post] (html/html-content (reduce str (html/emit* (post-snippet post-dict)))))
+
+(html/deftemplate blog-page "blog.html"
+	[post-dicts]
+	[:div.posts] (html/html-content (reduce str (map (fn [post-dict] (reduce str (html/emit* (post-snippet post-dict)))) post-dicts))))
 
 (html/deftemplate post-compose "compose.html"
 	[post-dict]
@@ -84,8 +92,20 @@
 		date-object (time-coerce/from-long (Long/parseLong date))
 		date-formatter (time-format/formatter "yyyy-MM-dd HH:mm")
 		post-map {:title title, :date (time-format/unparse date-formatter date-object), :content content}]
-		; (println (apply str ["Content: " content]))
 		(reduce str (post-page post-map))))
+
+(defn generate-blog [post-maps]
+	"Given raw data from the database, generate the HTML for a page of posts"
+	(let [
+		map-transform-fn (defn maptfn [raw-map]
+			(let [
+				date-object (time-coerce/from-long (Long/parseLong (:post-date raw-map)))
+				date-formatter (time-format/formatter "yyyy-MM-dd HH:mm")
+				post-title (:post-title raw-map)
+				post-content (:post-content raw-map)] 
+				{:title post-title, :date (time-format/unparse date-formatter date-object), :content post-content}))
+		] 
+		(reduce str (blog-page (map map-transform-fn post-maps)))))
 
 (defn get-post-composer [session post-id]
 	(if post-id 
@@ -98,13 +118,24 @@
 (defn get-post [post-id] 
 	"Given a raw ID, retrieve a post from the database"
 	(let [post-data (cbdb/get-post post-id)]
-		(if post-data 
-			; (do (println post-data) (apply str post-data))
+		(if post-data
 			(generate-post (:post-title post-data) (:post-date post-data) (:post-content post-data))
 			"Couldn't find the specified post")))
 
+(defn get-posts [raw-start raw-post-count]
+	"Given a start index and a number of posts, return as many posts as possible"
+	(let [
+		start (cbutil/parse-int raw-start)
+		post-count (cbutil/parse-int raw-post-count)
+		posts (if (and start post-count) (cbdb/get-posts start post-count) nil)]
+		(if posts 
+			(do (generate-blog posts))
+			"Unable to retrieve any posts")))
+
 ; App routes
 (defroutes app-routes
+  
+  ; TODO: Fix this to get the first set of blog entries
   (GET "/" [] "Hello World")
 
   (GET ["/test2/:id" :id #"[0-9]+"] 
@@ -117,7 +148,11 @@
     {:body (if (contains? session :next) (apply (:next session) []) (apply str ["No session yet"]))
      :session {:next (apply get-randn-fn [])}}
     )
-  (GET "/test" [] (apply get-test []))
+
+  ; Blog
+  (GET "/blog/:start/:count" 
+  	{session :session, params :params}
+  	(get-posts (:start params) (:count params)))
 
   (GET "/post/:id"
     [id]
