@@ -10,8 +10,6 @@
 (def server1-conn {:pool {} :spec {}})
 (defmacro wcar* [& body] `(car/wcar server1-conn ~@body))
 
-(def ^{:private true} to-delete "__TO_DELETE__")
-
 ; Helpers
 (defn- post-base-key [post-id] 
 	(apply str ["post:" post-id]))
@@ -39,7 +37,14 @@
 					(if (= remaining ()) 
 						so-far
 						(gf 
-							(cons (cbutil/map-function-on-map-keys (wcar* (car/parse-map (car/hgetall (post-base-key (first remaining))))) keyword) so-far) 
+							(cons 
+								(cbutil/map-function-on-map-keys 
+									(-> remaining
+										first
+										post-base-key
+										car/hgetall
+										car/parse-map
+										wcar*) keyword) so-far)
 							(rest remaining))))]
 				(try
 					(gf [] (reverse id-seq))

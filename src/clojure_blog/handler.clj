@@ -11,6 +11,9 @@
     [clj-time.format :as time-format]
     [clj-time.coerce :as time-coerce]))
 
+;; Config
+(def posts-per-page 10)
+
 (defn not-found [] "404: not found")
 
 ; TEMP --------
@@ -89,9 +92,12 @@
 (defn generate-post [title date content]
 	"Given raw data from the database, generate the HTML for a single post"
 	(let [
-		date-object (time-coerce/from-long (Long/parseLong date))
+		date-object (let [date-long (cbutil/parse-integer date)] (if date-long (time-coerce/from-long date-long) nil))
 		date-formatter (time-format/formatter "yyyy-MM-dd HH:mm")
-		post-map {:title title, :date (time-format/unparse date-formatter date-object), :content content}]
+		post-map {
+			:title title, 
+			:date (if date-object (time-format/unparse date-formatter date-object) "(unknown)"), 
+			:content content}]
 		(reduce str (post-page post-map))))
 
 (defn generate-blog [post-maps]
@@ -99,11 +105,14 @@
 	(let [
 		map-transform-fn (defn maptfn [raw-map]
 			(let [
-				date-object (time-coerce/from-long (Long/parseLong (:post-date raw-map)))
+				date-object (let [date-long (cbutil/parse-integer (:post-date raw-map))] (if date-long (time-coerce/from-long date-long) nil))
 				date-formatter (time-format/formatter "yyyy-MM-dd HH:mm")
 				post-title (:post-title raw-map)
 				post-content (:post-content raw-map)] 
-				{:title post-title, :date (time-format/unparse date-formatter date-object), :content post-content}))
+				{
+					:title post-title, 
+					:date (if date-object (time-format/unparse date-formatter date-object) "(unknown)"),
+					:content post-content}))
 		] 
 		(reduce str (blog-page (map map-transform-fn post-maps)))))
 
@@ -125,8 +134,8 @@
 (defn get-posts [raw-start raw-post-count]
 	"Given a start index and a number of posts, return as many posts as possible"
 	(let [
-		start (cbutil/parse-int raw-start)
-		post-count (cbutil/parse-int raw-post-count)
+		start (cbutil/parse-integer raw-start)
+		post-count (cbutil/parse-integer raw-post-count)
 		posts (if (and start post-count) (cbdb/get-posts start post-count) nil)]
 		(if posts 
 			(do (generate-blog posts))
@@ -134,9 +143,9 @@
 
 ; App routes
 (defroutes app-routes
-  
-  ; TODO: Fix this to get the first set of blog entries
-  (GET "/" [] "Hello World")
+
+  (GET "/" [] 
+  	(get-posts 0 posts-per-page))
 
   (GET ["/test2/:id" :id #"[0-9]+"] 
   	{session :session 
@@ -150,6 +159,10 @@
     )
 
   ; Blog
+  (GET "/blog"
+  	{session :session, params :params}
+  	(get-posts 0 posts-per-page))
+
   (GET "/blog/:start/:count" 
   	{session :session, params :params}
   	(get-posts (:start params) (:count params)))
