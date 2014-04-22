@@ -1,9 +1,9 @@
 (ns clojure-blog.handler
   (:use compojure.core)
   (:require 
-  [clojure-blog.util :as cbutil]
-  [clojure-blog.database :as cbdb]
-  [net.cgrand.enlive-html :as html]
+    [clojure-blog.util :as cbutil]
+    [clojure-blog.database :as cbdb]
+    [net.cgrand.enlive-html :as html]
     [compojure.handler :as handler]
     [compojure.route :as route]
     [ring.middleware.session :as session]

@@ -1,8 +1,8 @@
 (ns clojure-blog.database
   (:require 
-    [clojure-blog.util :as cbutil]
-     [taoensso.carmine :as car :refer (wcar)]
-     [clj-time.local :as time-local]
+  	[clojure-blog.util :as cbutil]
+    [taoensso.carmine :as car :refer (wcar)]
+    [clj-time.local :as time-local]
     [clj-time.coerce :as time-coerce]
     [clojure.string :as string]))
 
