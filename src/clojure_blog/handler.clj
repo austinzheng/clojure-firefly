@@ -3,22 +3,27 @@
   (:require 
     [clojure-blog.util :as cbutil]
     [clojure-blog.database :as cbdb]
-    [net.cgrand.enlive-html :as html]
+    [clojure-blog.auth :as cbauth]
+    [clojure-blog.template :as cbtemplate]
     [compojure.handler :as handler]
     [compojure.route :as route]
     [ring.middleware.session :as session]
+    [ring.util.response :as response]
     [ring.adapter.jetty :as jetty]
     [clj-time.format :as time-format]
     [clj-time.coerce :as time-coerce]))
 
+; NOTE: http://clojuredocs.org/ring/ring.util.response/redirect
+
 ;; Config
 (def posts-per-page 10)
 
+;; TEMP
 (defn not-found [] "404: not found")
+(defn access-forbidden [session] 
+  {:body "Please log in first.", :session session})
 
 ; TEMP --------
-(defn session-handler [req] (assoc req :session "MAI SESSION :3"))
-
 ; Return a function that itself returns a pre-determined random number
 (defn get-randn-fn []
   (let [rand-number (rand 1)]
@@ -26,29 +31,8 @@
 
 ; /TEMP -------
 
-(html/defsnippet post-snippet "post-snippet.html" 
-  [:div.post]
-  [post-dict]
-  [:title] (html/content [(:title post-dict) " - Blog Post"])
-  [:h1] (html/content (:title post-dict))
-  [:span.date] (html/content (:date post-dict))
-  [:div.content] (html/html-content (:content post-dict)))
-
-(html/deftemplate post-page "post.html"
-  [post-dict]
-  [:div.post] (html/html-content (reduce str (html/emit* (post-snippet post-dict)))))
-
-(html/deftemplate blog-page "blog.html"
-  [post-dicts]
-  [:div.posts] (html/html-content (reduce str (map (fn [post-dict] (reduce str (html/emit* (post-snippet post-dict)))) post-dicts))))
-
-(html/deftemplate post-compose "compose.html"
-  [post-dict]
-  [:input.post-title] (if (contains? post-dict :post-title) (html/set-attr :value (:post-title post-dict)) (html/set-attr :unused "unused"))
-  [:input.post-id] (if (contains? post-dict :post-id) (html/set-attr :value (:post-id post-dict)) nil)
-  [:textarea.post-content] (if (contains? post-dict :post-content) (html/content (:post-content post-dict)) (html/set-attr :unused "unused"))
-  [:button.action-submit] (html/set-attr :name (if (contains? post-dict :post-id) "edit-post" "add-post"))
-  [:span.delete-button] (if (:should-show-delete post-dict) (html/html-content "<button name=\"delete\" type=\"submit\">Delete</button>") nil))
+(defn make-nav-map [session] 
+  {:logged-in (cbauth/admin? session), :username "Admin", :login-route "/admin/login", :logout-route "/admin/logout"})
 
 (defn action-create-post! [session params]
   "Create a post and save it to the database"
@@ -83,13 +67,13 @@
     (contains? params :delete) (action-delete-post! session (:post-id params)) 
     :else (not-found)))
 
-(defn generate-edit-post-composer [post-id title content]
-  (reduce str (post-compose {:should-show-delete true, :post-id post-id, :post-title title, :post-content content})))
+(defn generate-edit-post-composer [session post-id title content]
+  (reduce str (cbtemplate/post-compose {:should-show-delete true, :post-id post-id, :post-title title, :post-content content} (make-nav-map session))))
 
-(defn generate-new-post-composer []
-  (reduce str (post-compose {:should-show-delete false})))
+(defn generate-new-post-composer [session]
+  (reduce str (cbtemplate/post-compose {:should-show-delete false} (make-nav-map session))))
 
-(defn generate-post [title date content]
+(defn generate-post [session title date content]
   "Given raw data from the database, generate the HTML for a single post"
   (let [
     date-object (let [date-long (cbutil/parse-integer date)] (if date-long (time-coerce/from-long date-long) nil))
@@ -98,9 +82,9 @@
       :title title, 
       :date (if date-object (time-format/unparse date-formatter date-object) "(unknown)"), 
       :content content}]
-    (reduce str (post-page post-map))))
+    (reduce str (cbtemplate/post-page post-map (make-nav-map session)))))
 
-(defn generate-blog [post-maps]
+(defn generate-blog [session post-maps]
   "Given raw data from the database, generate the HTML for a page of posts"
   (let [
     map-transform-fn (defn maptfn [raw-map]
@@ -114,38 +98,40 @@
           :date (if date-object (time-format/unparse date-formatter date-object) "(unknown)"),
           :content post-content}))
     ] 
-    (reduce str (blog-page (map map-transform-fn post-maps)))))
+    (reduce str (cbtemplate/blog-page (map map-transform-fn post-maps) (make-nav-map session)))))
 
 (defn get-post-composer [session post-id]
   (if post-id 
     (let [post-data (cbdb/get-post post-id)]
       (if post-data
-        (generate-edit-post-composer post-id (:post-title post-data) (:post-content post-data))
+        (generate-edit-post-composer session post-id (:post-title post-data) (:post-content post-data))
         "Bad post ID"))
-    (generate-new-post-composer)))
+    (generate-new-post-composer session)))
 
-(defn get-post [post-id] 
+(defn get-post [session post-id] 
   "Given a raw ID, retrieve a post from the database"
   (let [post-data (cbdb/get-post post-id)]
     (if post-data
-      (generate-post (:post-title post-data) (:post-date post-data) (:post-content post-data))
+      (generate-post session (:post-title post-data) (:post-date post-data) (:post-content post-data))
       "Couldn't find the specified post")))
 
-(defn get-posts [raw-start raw-post-count]
+(defn get-posts [session raw-start raw-post-count]
   "Given a start index and a number of posts, return as many posts as possible"
   (let [
     start (cbutil/parse-integer raw-start)
     post-count (cbutil/parse-integer raw-post-count)
     posts (if (and start post-count) (cbdb/get-posts start post-count) nil)]
     (if posts 
-      (do (generate-blog posts))
+      (do (generate-blog session posts))
       "Unable to retrieve any posts")))
 
 ; App routes
 (defroutes app-routes
 
-  (GET "/" [] 
-    (get-posts 0 posts-per-page))
+  (GET "/" 
+    {session :session}
+    (let [c-session (if session session {})]
+      (assoc (response/redirect (apply str ["/blog/0/" posts-per-page])) :session session)))
 
   (GET ["/test2/:id" :id #"[0-9]+"] 
     {session :session 
@@ -158,35 +144,66 @@
      :session {:next (apply get-randn-fn [])}}
     )
 
+;; TEST CODE
+  (GET "/setsession" 
+    {session :session, params :params}
+    (if (cbauth/admin? session) 
+      {:body "Already have session", 
+       :session session}
+      {:body "Created new session", 
+       :session (cbauth/add-admin-session nil)}))
+
   ; Blog
   (GET "/blog"
     {session :session, params :params}
-    (get-posts 0 posts-per-page))
+    {:body (get-posts session 0 posts-per-page), :session session})
 
   (GET "/blog/:start/:count" 
     {session :session, params :params}
-    (get-posts (:start params) (:count params)))
+    {:body (get-posts session (:start params) (:count params)) :session session})
 
   (GET "/post/:id"
-    [id]
-    (get-post id))
+    {session :session, params :params}
+    {:body (get-post session (:id params)) :session session})
 
   ; Admin panel
+  (POST "/admin/login"
+    {session :session, params :params}
+    (if (cbauth/credentials-valid? params)
+      (assoc (response/redirect "/") :session (cbauth/add-admin-session session))
+      "Invalid credentials, try again"))
+
+  (GET "/admin/logout" 
+    {session :session, params :params}
+    (if (cbauth/admin? session)
+      {:body "Logged out", 
+       :session (dissoc session :admin-session)}
+      {:body "Not logged in!",
+       :session session}))
+
   (GET "/admin/edit/post/:id" 
     {session :session, params :params} 
-    (get-post-composer session (:id params)))
+    (if (cbauth/admin? session) 
+      {:body (get-post-composer session (:id params)), :session session}
+      (access-forbidden session)))
 
   (GET "/admin/new/post" 
     {session :session, params :params}
-    (get-post-composer session nil))
+    (if (cbauth/admin? session) 
+      {:body (get-post-composer session nil), :session session}
+      (access-forbidden session)))
 
   (GET "/admin/delete/post/:id" 
     {session :session, params :params} 
-    (handle-delete session params))
+    (if (cbauth/admin? session) 
+      {:body (handle-delete session params), :session session} 
+      (access-forbidden session)))
 
   (POST "/admin/submit/post"
     {session :session, params :params}
-    (handle-npsubmit session params))
+    (if (cbauth/admin? session) 
+      {:body (handle-npsubmit session params), :session session}
+      (access-forbidden session)))
 
   (route/resources "/")
   (route/not-found "Not found!"))
