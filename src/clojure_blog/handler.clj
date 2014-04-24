@@ -31,9 +31,7 @@
   "Build the 'session-info' map, which encapsulates session-specific info useful when rendering a response body"
   (let []
     {:logged-in (cbauth/admin? session),
-      :username "Admin"
-      :login-route "/admin/login"
-      :logout-route "/admin/logout"}))
+      :username "Admin"}))
 
 ; App routes
 (defroutes app-routes
@@ -67,13 +65,13 @@
     {session :session, params :params}
     "hullo")
 
-  (GET "/blog/:start/:count" 
+  (GET ["/blog/:start/:count" :start #"[0-9]+" :count #"[0-9]+"]
     {session :session, params :params}
     (let [session-info (make-session-info session)]
       {:body (blog/get-posts session-info (:start params 0) (:count params 10))
         :session session}))
 
-  (GET "/post/:id"
+  (GET ["/post/:id" :id #"[0-9]+"]
     {session :session, params :params}
     (let [session-info (make-session-info session)]
       {:body (blog/get-post session-info (:id params nil))
@@ -94,7 +92,7 @@
       {:body "Not logged in!",
        :session session}))
 
-  (GET "/admin/edit/post/:id" 
+  (GET ["/admin/edit/post/:id" :id #"[0-9]+"]
     {session :session, params :params}
     (let [
       session-info (make-session-info session)
@@ -114,7 +112,7 @@
           :session session}
         (access-forbidden session))))
 
-  (GET "/admin/delete/post/:id" 
+  (GET ["/admin/delete/post/:id" :id #"[0-9]+"]
     {session :session, params :params} 
     (if (cbauth/admin? session) 
       {:body (blog/post-delete! session params), :session session} 
