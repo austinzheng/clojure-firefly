@@ -2,6 +2,9 @@
    (:require 
     [net.cgrand.enlive-html :as html]))
 
+(declare post-snippet)
+(declare nav-snippet)
+
 (defn- invoke-post-snippet [post-map]
   (post-snippet 
     (:title post-map "") 

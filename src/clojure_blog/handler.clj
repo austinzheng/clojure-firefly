@@ -158,6 +158,10 @@
     {session :session, params :params}
     {:body (get-posts session 0 posts-per-page), :session session})
 
+  (GET "/blog/archive" 
+    {session :session, params :params}
+    "hullo")
+
   (GET "/blog/:start/:count" 
     {session :session, params :params}
     {:body (get-posts session (:start params) (:count params)) :session session})
