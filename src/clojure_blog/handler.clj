@@ -1,8 +1,10 @@
 (ns clojure-blog.handler
   (:use compojure.core)
   (:require 
-    [clojure-blog.blog :as blog]
+    [clojure-blog.blog :as cbblog]
     [clojure-blog.auth :as cbauth]
+    [clojure-blog.template :as cbtemplate]
+    [clojure-blog.settings :as cbsettings]
     [compojure.handler :as handler]
     [compojure.route :as route]
     [ring.middleware.session :as session]
@@ -11,13 +13,25 @@
 
 ; NOTE: http://clojuredocs.org/ring/ring.util.response/redirect
 
-;; Config
-(def posts-per-page 10)
+; TODO: these should be variable arity
+(defn response-403
+  [session back-link back-msg]
+  (let [
+    session-info (cbauth/make-session-info session)
+    error-msg "You must first log in."]
+    {:status 403
+      :session session
+      :body (cbtemplate/error-page session-info error-msg back-link back-msg)}))
 
-;; TEMP
-(defn not-found [] "404: not found")
-(defn access-forbidden [session] 
-  {:body "Please log in first.", :session session})
+(defn response-404 
+  [session back-link back-msg]
+  (let [
+    session-info (cbauth/make-session-info session)
+    error-msg "404: The requested resource couldn't be found."]
+    {:status 404
+      :session session
+      :body (cbtemplate/error-page session-info error-msg back-link back-msg)}))
+  
 
 ; TEMP --------
 ; Return a function that itself returns a pre-determined random number
@@ -27,19 +41,13 @@
 
 ; /TEMP -------
 
-(defn make-session-info [session]
-  "Build the 'session-info' map, which encapsulates session-specific info useful when rendering a response body"
-  (let []
-    {:logged-in (cbauth/admin? session),
-      :username "Admin"}))
-
 ; App routes
 (defroutes app-routes
 
   (GET "/" 
     {session :session}
     (let [c-session (if session session {})]
-      (assoc (response/redirect (apply str ["/blog/0/" posts-per-page])) :session session)))
+      (assoc (response/redirect (apply str ["/blog/0/" cbsettings/posts-per-page])) :session session)))
 
 ;; TEST CODE
   (GET ["/test2/:id" :id #"[0-9]+"] 
@@ -57,8 +65,8 @@
   ; Blog
   (GET "/blog"
     {session :session, params :params}
-    (let [session-info (make-session-info session)]
-      {:body (blog/get-posts session-info 0 posts-per-page)
+    (let [session-info (cbauth/make-session-info session)]
+      {:body (cbblog/get-posts session-info 0 cbsettings/posts-per-page)
         :session session}))
 
   (GET "/blog/archive" 
@@ -67,26 +75,29 @@
 
   (GET ["/blog/:start/:count" :start #"[0-9]+" :count #"[0-9]+"]
     {session :session, params :params}
-    (let [session-info (make-session-info session)]
-      {:body (blog/get-posts session-info (:start params 0) (:count params 10))
+    (let [session-info (cbauth/make-session-info session)]
+      {:body (cbblog/get-posts session-info (:start params 0) (:count params 10))
         :session session}))
 
   (GET ["/post/:id" :id #"[0-9]+"]
     {session :session, params :params}
-    (let [session-info (make-session-info session)]
-      {:body (blog/get-post session-info (:id params nil))
+    (let [session-info (cbauth/make-session-info session)]
+      {:body (cbblog/get-post session-info (:id params nil))
         :session session}))
 
   ; Admin panel
   (POST "/admin/login"
     {session :session, params :params}
     (if (cbauth/credentials-valid? params)
+      ;; TODO: Redirect to the previous page.
       (assoc (response/redirect "/") :session (cbauth/add-admin-session session))
+      ; TODO: Fix this
       "Invalid credentials, try again"))
 
   (GET "/admin/logout" 
     {session :session, params :params}
     (if (cbauth/admin? session)
+      ; TODO: Fix this
       {:body "Logged out", 
        :session (dissoc session :admin-session)}
       {:body "Not logged in!",
@@ -95,37 +106,39 @@
   (GET ["/admin/edit/post/:id" :id #"[0-9]+"]
     {session :session, params :params}
     (let [
-      session-info (make-session-info session)
+      session-info (cbauth/make-session-info session)
       authorized (cbauth/admin? session)]
       (if authorized
-        {:body (blog/get-post-composer session-info (:id params nil))
+        {:body (cbblog/get-post-composer session-info (:id params nil))
           :session session}
-        (access-forbidden session))))
+        (response-403 session nil nil))))
 
   (GET "/admin/new/post" 
     {session :session, params :params}
     (let [
-      session-info (make-session-info session)
+      session-info (cbauth/make-session-info session)
       authorized (cbauth/admin? session)]
       (if authorized
-        {:body (blog/get-post-composer session-info nil)
+        {:body (cbblog/get-post-composer session-info nil)
           :session session}
-        (access-forbidden session))))
+        (response-403 session nil nil))))
 
   (GET ["/admin/delete/post/:id" :id #"[0-9]+"]
     {session :session, params :params} 
     (if (cbauth/admin? session) 
-      {:body (blog/post-delete! session params), :session session} 
-      (access-forbidden session)))
+      {:body (cbblog/post-delete! session params), :session session} 
+      (response-403 session nil nil)))
 
   (POST "/admin/submit/post"
     {session :session, params :params}
     (if (cbauth/admin? session) 
-      {:body (blog/post-npsubmit! session params), :session session}
-      (access-forbidden session)))
+      {:body (cbblog/post-npsubmit! session params), :session session}
+      (response-403 session nil nil)))
 
   (route/resources "/")
-  (route/not-found "Not found!"))
+  ; TODO: Replace this with a simple version.
+  (route/not-found
+    (response-404 nil nil nil)))
 
 (def app
   ; Note: since we wrap in handler/site we shouldn't need to manually add session middleware

@@ -2,6 +2,7 @@
   (:require
     [clojure-blog.database :as cbdb]
     [clojure-blog.template :as cbtemplate]
+    [clojure-blog.auth :as cbauth]
     [clojure-blog.util :as cbutil]
     [clj-time.format :as time-format]
     [clj-time.coerce :as time-coerce]))
@@ -12,6 +13,7 @@
 (defn action-create-post! [session params]
   "Create a post and save it to the database"
   (let [post-id (cbdb/add-post! (:post-title params) (:post-content params))]
+    ;; TODO: Should go back to wherever
     (if post-id (apply str ["Post created. ID: " post-id]) "Couldn't create post!")))
 
 (defn action-edit-post! [session params]
@@ -20,6 +22,7 @@
     new-title (:post-title params)
     new-content (:post-content params)
     post-id (:post-id params)]
+    ;; TODO: should go back to wherever
     (if (cbdb/edit-post! post-id new-title new-content) "Post edited." "Couldn't edit post!")))
 
 (defn action-create-preview [session params]
@@ -29,6 +32,7 @@
 
 (defn action-delete-post! [session post-id]
   ; Stuff to check the session
+  ;; TODO: SHould go back to wherever
   (if (cbdb/delete-post! post-id) "Post deleted" "Error deleting post"))
 
 
@@ -45,7 +49,7 @@
     (contains? params :edit-post) (action-edit-post! session params)
     (contains? params :preview) (action-create-preview session params)
     (contains? params :delete) (action-delete-post! session (:post-id params)) 
-    :else "Blog post not found"))
+    :else (cbtemplate/error-page (cbauth/make-session-info session) "An error occurred." nil nil)))
 
 
 ;; 'format-' functions generate HTML for a given blog page.
@@ -53,13 +57,14 @@
 (defn format-composer-edit [session-info post-id title content]
   (reduce str 
     (cbtemplate/post-compose 
+      session-info
       {:should-show-delete true, 
         :post-id post-id, 
         :post-title title, 
-        :post-content content} session-info)))
+        :post-content content})))
 
 (defn format-composer-new [session-info]
-  (reduce str (cbtemplate/post-compose {:should-show-delete false} session-info)))
+  (reduce str (cbtemplate/post-compose session-info {:should-show-delete false})))
 
 (defn format-post [session-info title date content]
   "Given raw data from the database, generate the HTML for a single post"
@@ -70,7 +75,7 @@
       :title title, 
       :date (if date-object (time-format/unparse date-formatter date-object) "(unknown)"), 
       :content content}]
-    (reduce str (cbtemplate/post-page post-map session-info))))
+    (reduce str (cbtemplate/post-page session-info post-map))))
 
 (defn format-blog [session-info post-maps]
   "Given raw data from the database, generate the HTML for a page of posts"
@@ -86,7 +91,7 @@
           :date (if date-object (time-format/unparse date-formatter date-object) "(unknown)"),
           :content post-content}))
     ] 
-    (reduce str (cbtemplate/blog-page (map map-transform-fn post-maps) session-info))))
+    (reduce str (cbtemplate/blog-page session-info (map map-transform-fn post-maps)))))
 
 
 ;; 'get-' functions provide an interface for getting the :body of a response to a GET request.
@@ -96,7 +101,9 @@
     (let [post-data (cbdb/get-post post-id)]
       (if post-data
         (format-composer-edit session-info post-id (:post-title post-data) (:post-content post-data))
-        "Bad post ID"))
+        (cbtemplate/error-page 
+        session-info 
+        "Cannot edit post. Invalid post ID." nil nil)))
     (format-composer-new session-info)))
 
 (defn get-post [session-info post-id] 
@@ -108,7 +115,9 @@
         (:post-title post-data) 
         (:post-date post-data)
         (:post-content post-data))
-      "Couldn't find the specified post")))
+      (cbtemplate/error-page 
+        session-info 
+        "Could not retrieve post." nil nil))))
 
 (defn get-posts [session-info raw-start raw-post-count]
   "Given a start index and a number of posts, return as many posts as possible"
@@ -117,5 +126,7 @@
     post-count (cbutil/parse-integer raw-post-count)
     posts (if (and start post-count) (cbdb/get-posts start post-count) nil)]
     (if posts 
-      (do (format-blog session-info posts))
-      "Unable to retrieve any posts")))
+      (format-blog session-info posts)
+      (cbtemplate/error-page 
+        session-info 
+        "Could not retrieve any posts." nil nil))))
