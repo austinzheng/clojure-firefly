@@ -28,6 +28,7 @@ To start a web server for the application, run:
 
 ### Technical
 
+- Fix routes to handle trailing '/'
 - Better delineation of function purpose (e.g. get-blog is explicitly responsible for creating the request body)
 - Properly implement authentication (right now username/password are hardcoded)
 - Persistent sessions and better session security

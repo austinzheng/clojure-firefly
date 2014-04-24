@@ -20,6 +20,7 @@
     (:login-route nav-map)
     (:logout-route nav-map)))
 
+;; Snippet for a single post entry
 (html/defsnippet post-snippet "post-snippet.html" 
   [:div.post]
   [title date content edited edit-date]
@@ -27,6 +28,7 @@
   [:span.date] (html/content date)
   [:div.content] (html/html-content content))
 
+;; Snippet for the navigation bar
 (html/defsnippet nav-snippet "nav-snippet.html"
   [:div.navigation]
   [logged-in username login-route logout-route]
@@ -37,17 +39,20 @@
   [:a.logout] (if logged-in (html/set-attr :href logout-route) nil)
   [:span.credentials] (html/content (if logged-in ["Welcome, " username ". "] "")))
 
+;; Template for the single-post page
 (html/deftemplate post-page "post.html"
   [post-map nav-map]
   [:title] (html/content [(:title post-map) " - My Blog"])
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-nav-snippet nav-map))))
   [:div.post] (html/html-content (reduce str (html/emit* (invoke-post-snippet post-map)))))
 
+;; Template for the multiple-post blog page
 (html/deftemplate blog-page "blog.html"
   [post-maps nav-map]
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-nav-snippet nav-map))))
   [:div.posts] (html/html-content (reduce str (map #(reduce str (html/emit* (invoke-post-snippet %))) post-maps))))
 
+;; Template for the blog post composer page
 (html/deftemplate post-compose "compose.html"
   [post-map nav-map]
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-nav-snippet nav-map))))

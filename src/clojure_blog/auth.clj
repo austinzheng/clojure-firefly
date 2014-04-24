@@ -2,7 +2,9 @@
 
 ;; TODO: Actually implement this properly
 (defn credentials-valid? [params]
-  (and (= (:username params nil) "admin") (:password params nil) "12345"))
+  (and
+   (= (:username params nil) "admin") 
+   (= (:password params nil) "12345")))
 
 (defn admin? [session]
   (= (:admin-session session nil) "session-active"))
