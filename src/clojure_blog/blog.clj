@@ -12,18 +12,24 @@
 
 (defn action-create-post! [session params]
   "Create a post and save it to the database"
-  (let [post-id (cbdb/add-post! (:post-title params) (:post-content params))]
+  (let [
+    post-title (:post-title params "")
+    post-content (:post-content params "")
+    can-create (and (cbutil/nonempty? post-title) (cbutil/nonempty? post-content))
+    post-id (if can-create (cbdb/add-post! post-title post-content) nil)]
     ;; TODO: Should go back to wherever
     (if post-id (apply str ["Post created. ID: " post-id]) "Couldn't create post!")))
 
 (defn action-edit-post! [session params]
   "Edit an existing post"
   (let [
-    new-title (:post-title params)
-    new-content (:post-content params)
-    post-id (:post-id params)]
+    new-title (:post-title params "")
+    new-content (:post-content params "")
+    post-id (:post-id params nil)
+    can-edit (and (cbutil/nonempty? new-title) (cbutil/nonempty? new-content) (cbutil/nonempty? post-id))
+    edit-result (if can-edit (cbdb/edit-post! post-id new-title new-content) nil)]
     ;; TODO: should go back to wherever
-    (if (cbdb/edit-post! post-id new-title new-content) "Post edited." "Couldn't edit post!")))
+    (if edit-result "Post edited." "Couldn't edit post!")))
 
 (defn action-create-preview [session params]
   ; Stuff to check the session

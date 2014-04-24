@@ -15,10 +15,10 @@
 
 ; TODO: these should be variable arity
 (defn response-403
-  [session back-link back-msg]
+  [session message back-link back-msg]
   (let [
     session-info (cbauth/make-session-info session)
-    error-msg "You must first log in."]
+    error-msg (if message message "You must first log in.")]
     {:status 403
       :session session
       :body (cbtemplate/error-page session-info error-msg back-link back-msg)}))
@@ -111,7 +111,7 @@
       (if authorized
         {:body (cbblog/get-post-composer session-info (:id params nil))
           :session session}
-        (response-403 session nil nil))))
+        (response-403 session "You must first log in to edit posts." nil nil))))
 
   (GET "/admin/new/post" 
     {session :session, params :params}
@@ -121,19 +121,21 @@
       (if authorized
         {:body (cbblog/get-post-composer session-info nil)
           :session session}
-        (response-403 session nil nil))))
+        (response-403 session "You must first log in to compose new posts." nil nil))))
 
   (GET ["/admin/delete/post/:id" :id #"[0-9]+"]
     {session :session, params :params} 
     (if (cbauth/admin? session) 
-      {:body (cbblog/post-delete! session params), :session session} 
-      (response-403 session nil nil)))
+      {:body (cbblog/post-delete! session params)
+        :session session} 
+      (response-403 session "You must first log in to delete posts." nil nil)))
 
   (POST "/admin/submit/post"
     {session :session, params :params}
     (if (cbauth/admin? session) 
-      {:body (cbblog/post-npsubmit! session params), :session session}
-      (response-403 session nil nil)))
+      {:body (cbblog/post-npsubmit! session params)
+        :session session}
+      (response-403 session nil nil nil)))
 
   (route/resources "/")
   ; TODO: Replace this with a simple version.
