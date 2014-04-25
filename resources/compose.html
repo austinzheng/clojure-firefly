@@ -9,13 +9,13 @@
     <div>Composer</div>
     <div class="input">
       <form action="/admin/submit/post" method="post">
-        <input class="post-id" type="hidden" name="post-id" />
-        Title: <input class="post-title" type="text" name="post-title" placeholder="Enter a title here" />
-        <div><textarea class="post-content" name="post-content" cols="120" rows="30" placeholder="Enter blog post here (HTML is fine)"></textarea></div>
+        <input id="post-id" type="hidden" name="post-id" />
+        Title: <input id="post-title" type="text" name="post-title" placeholder="Enter a title here" />
+        <div><textarea id="post-content" name="post-content" cols="120" rows="30" placeholder="Enter blog post here (HTML is fine)"></textarea></div>
         <div>
           <span><button name="preview" type="submit">Preview</button></span>
-          <span><button class="action-submit" name="unassigned" type="submit">Submit</button></span>
-          <span class="delete-button"></span>
+          <span><button id="action-submit" name="unassigned" type="submit">Submit</button></span>
+          <span id="delete-button"></span>
         </div>
       </form>
     </div>

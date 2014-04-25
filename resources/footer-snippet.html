@@ -2,13 +2,13 @@
   <hr />
   <span class="copyright">(c) 2014 Austin Zheng</span>
   <span> | </span>
-  <span class="credentials"> ??? </span>
-  <span class="action"><a class="logout" href="">Logout</a></span>
+  <span id="credentials"> ??? </span>
+  <a id="logout" class="admin-action" href="">Logout</a>
   <span class="if-logged-in"> | </span>
-  <span class="if-logged-in"><a class="new-post" href="">New Post</a></span>
+  <a id="new-post" class="admin-action" href="">New Post</a>
   <span>
     <!-- TODO: Remove the stupid inline style. -->
-    <form class="login-form" method="post" style="display: inline-block;">
+    <form id="login-form" method="post" style="display: inline-block;">
       <input name="username" type="text" placeholder="Username"></input>
       <input name="password" type="text" placeholder="Password"></input>
       <button name="login" type="submit">Login</button>

@@ -138,7 +138,6 @@
       (response-403 session nil nil nil)))
 
   (route/resources "/")
-  ; TODO: Replace this with a simple version.
   (route/not-found
     (response-404 nil nil nil)))
 

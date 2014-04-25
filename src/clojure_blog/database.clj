@@ -16,15 +16,22 @@
 
 ; Post-related API
 (defn get-post [post-id]
-  "Get a blog post from redis based on the post ID, or nil if it doesn't exist." 
+  "Get a blog post (as post-map) from redis based on the post ID, or nil if it doesn't exist." 
   (let [
     raw-map (try 
-      (wcar* (car/parse-map (car/hgetall (post-base-key post-id)))) (catch Exception e nil))]
-    (if raw-map (cbutil/map-function-on-map-keys raw-map keyword) nil)))
+      (wcar* 
+        (car/parse-map 
+          (car/hgetall 
+            (post-base-key post-id)))) (catch Exception e nil))]
+    (if 
+      raw-map 
+      (cbutil/map-function-on-map-keys raw-map keyword) 
+      nil)))
 
 (defn get-posts [start num-posts]
   "Get a number of blog posts from redis, with a start index and a count. If either the start index or count are
-  invalid, returns nil."
+  invalid, returns nil. Returns a tuple, the first element is a list of IDs and the second element is a list of
+  post-map objects."
   (let [
     post-count (wcar* (car/llen :post-list))
     adj-num-posts (min num-posts (- post-count start))
@@ -47,7 +54,7 @@
                     wcar*) keyword) so-far)
               (rest remaining))))]
         (try
-          (gf [] (reverse id-seq))
+          [id-seq (gf [] (reverse id-seq))]
           (catch Exception e nil))))))
 
 (defn add-post! [post-title post-content]
@@ -56,17 +63,14 @@
     post-id (wcar* (car/incr :post-next-id))
     post-date (time-coerce/to-long (time-local/local-now))
     hash-key (post-base-key post-id)]
-    (wcar* (car/multi))
-    (wcar* (car/lpush :post-list post-id))
     (wcar* 
-      (car/hmset* 
-        hash-key
-        {
-          :post-title post-title,
-          :post-date post-date, 
-          :post-content post-content, 
-          :post-edited false, 
-          :post-edit-date nil}))
+      (car/multi)
+      (car/lpush :post-list post-id)
+      (car/hset hash-key :post-title post-title)
+      (car/hset hash-key :post-date post-date)
+      (car/hset hash-key :post-content post-content)
+      (car/hset hash-key :post-edited false)
+      (car/hset hash-key :post-edit-date nil))
     (try 
       (do (wcar* (car/exec)) (wcar* (car/bgsave)) post-id) 
       (catch Exception e nil))))
@@ -80,11 +84,15 @@
     key-exists (= 1 (wcar* (car/exists hash-key)))]
     (if key-exists
       (do 
-        (wcar* (car/hset hash-key :post-title post-title))
-        (wcar* (car/hset hash-key :post-content post-content))
-        (wcar* (car/hset hash-key :post-edited true))
-        (wcar* (car/hset hash-key :post-edit-date edit-date))
-        true)
+        (wcar*
+          (car/multi)
+          (car/hset hash-key :post-title post-title)
+          (car/hset hash-key :post-content post-content)
+          (car/hset hash-key :post-edited true)
+          (car/hset hash-key :post-edit-date edit-date))
+        (try 
+          (do (wcar* (car/exec)) (wcar* (car/bgsave)) true) 
+          (catch Exception e false)))
       false)))
 
 (defn delete-post! [post-id]
@@ -94,17 +102,20 @@
     key-exists (= 1 (wcar* (car/exists hash-key)))]
     (if key-exists
       (do
-        (wcar* (car/multi))
-        (wcar* (car/lrem :post-list 0 post-id))
-        (wcar* (car/del (post-base-key post-id)))
+        (wcar* 
+          (car/multi)
+          (car/lrem :post-list 0 post-id)
+          (car/del (post-base-key post-id)))
         (try 
           (do (wcar* (car/exec)) (wcar* (car/bgsave)) true) 
           (catch Exception e false)))
       false)))
 
 
-; Comment-related API
+; Image-related API
 
 ; Tag-related API
 
 ; Links-related API
+
+; Comments?

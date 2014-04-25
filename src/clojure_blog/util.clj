@@ -10,6 +10,7 @@
   (reduce (fn [new-map [k v]] (assoc new-map (apply func [k]) v)) {} m))
 
 (defn nonempty? [string]
+  "Return true if the input string is not nil and has a length greater than 0"
   (and 
     (not (= string nil)) 
     (> (count string) 0)))
