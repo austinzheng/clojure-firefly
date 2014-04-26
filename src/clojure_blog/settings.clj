@@ -1,13 +1,16 @@
 (ns clojure-blog.settings)
 
 ;; The name of the blog
-(def blog-title "AUSTIN'S AWESOME BLOG")
+(def blog-title "Blog Title")
 
 ;; A subtitle for the blog
-(def blog-subtitle "This is a very cool blog, and I really like it")
+(def blog-subtitle "Blog subtitle goes here")
 
 ;; How many posts each blog page should show
 (def posts-per-page 10)
+
+;; tz database time zone ID
+(def time-zone-id "America/Los_Angeles")
 
 ;; Don't change these if there isn't a pressing need
 (def main-route "/")

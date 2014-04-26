@@ -2,7 +2,7 @@
   (:require 
   	[clojure-blog.util :as cbutil]
     [taoensso.carmine :as car :refer (wcar)]
-    [clj-time.local :as time-local]
+    [clj-time.core :as time-core]
     [clj-time.coerce :as time-coerce]
     [clojure.string :as string]))
 
@@ -61,7 +61,7 @@
   "Add a new post to the database; returns the post ID, or nil if failed."
   (let [
     post-id (wcar* (car/incr :post-next-id))
-    post-date (time-coerce/to-long (time-local/local-now))
+    post-date (time-coerce/to-long (time-core/now))
     hash-key (post-base-key post-id)]
     (wcar* 
       (car/multi)
@@ -79,7 +79,7 @@
   "Replaces the contents of post post-id with post-content, and the names as well. Returns true if successful, false
   otherwise. If post-id does not exist, it will not be created."
   (let [
-    edit-date (time-coerce/to-long (time-local/local-now))
+    edit-date (time-coerce/to-long (time-core/now))
     hash-key (post-base-key post-id)
     key-exists (= 1 (wcar* (car/exists hash-key)))]
     (if key-exists

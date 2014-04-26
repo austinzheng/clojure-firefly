@@ -3,6 +3,8 @@
     [clojure-blog.util :as cbutil]
     [clojure-blog.settings :as cbsettings]
     [net.cgrand.enlive-html :as html]
+    [clj-time.core :as time-core]
+    [clj-time.local :as time-local]
     [clj-time.format :as time-format]
     [clj-time.coerce :as time-coerce]))
 
@@ -24,10 +26,11 @@
 (defn- format-date [raw-date]
   "Given a raw date string (long as string), turn it into a formatted date-time string"
   (let [
-    date-formatter (time-format/formatter "MM/dd/yyyy HH:mm")
+    time-zone (time-core/time-zone-for-id cbsettings/time-zone-id)
+    f (time-format/with-zone (time-format/formatter "MM/dd/yyyy HH:mm") time-zone)
     as-long (cbutil/parse-integer raw-date)
-    as-joda (if as-long (time-coerce/from-long as-long) nil)]
-    (if as-joda (time-format/unparse date-formatter as-joda) "(Unknown)")))
+    as-obj (when as-long (time-coerce/from-long as-long))]
+    (if as-obj (time-format/unparse f as-obj) "(Unknown)")))
 
 (defn- invoke-post-snippet [session-info-map is-single post-id post-map]
   "Generate the HTML for a single post"
