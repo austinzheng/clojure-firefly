@@ -2,155 +2,128 @@
   (:use compojure.core)
   (:require 
     [clojure-blog.blog :as cbblog]
+    [clojure-blog.session :as cbsession]
     [clojure-blog.auth :as cbauth]
     [clojure-blog.template :as cbtemplate]
     [clojure-blog.settings :as cbsettings]
     [compojure.handler :as handler]
     [compojure.route :as route]
     [ring.middleware.session :as session]
-    [ring.util.response :as response]
     [ring.adapter.jetty :as jetty]))
 
-; NOTE: http://clojuredocs.org/ring/ring.util.response/redirect
+;; UTILITY GENERATORS
+(def home-route (apply str ["/blog/0/" cbsettings/posts-per-page]))
 
 ; TODO: these should be variable arity
 (defn- response-403
-  [session message back-link back-msg]
+  [session flash message back-link back-msg]
   (let [
+    flash-msg flash
     session-info (cbauth/make-session-info session)
     error-msg (if message message "You must first log in.")]
     {:status 403
       :session session
-      :body (cbtemplate/error-page session-info error-msg back-link back-msg)}))
+      :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)}))
 
 (defn- response-404 
-  [session back-link back-msg]
+  [session flash back-link back-msg]
   (let [
+    flash-msg flash
     session-info (cbauth/make-session-info session)
     error-msg "404: The requested resource couldn't be found."]
     {:status 404
       :session session
-      :body (cbtemplate/error-page session-info error-msg back-link back-msg)}))
+      :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)}))
 
-(defn- redirect-with-session [url session]
-  (assoc (response/redirect url) :session session))
 
-; TEMP --------
-; Return a function that itself returns a pre-determined random number
-(defn get-randn-fn []
-  (let [rand-number (rand 1)]
-    (fn [] (str rand-number))))
-
-; /TEMP -------
-
-; App routes
+;; APP ROUTES
 (defroutes app-routes
 
   (GET "/" 
-    {session :session}
-    (let [c-session (if session session {})]
-      (redirect-with-session (apply str ["/blog/0/" cbsettings/posts-per-page]) session)))
-
-;; TEST CODE
-  (GET ["/test2/:id" :id #"[0-9]+"] 
-    {session :session 
-     params :params} 
-    {:body (apply str [(:test session) " - session, id:" (:id params)]) 
-     :session {:test "hello"}})
-
-  (GET "/test3" {session :session, params :params}
-    {:body (if (contains? session :next) (apply (:next session) []) (apply str ["No session yet"]))
-     :session {:next (apply get-randn-fn [])}}
-    )
-;; END TEST CODE
+    {session :session, flash :flash}
+    (cbsession/redirect 
+      (cbsession/session-with-return-url session home-route) 
+      flash
+      home-route))
 
   ; Blog
-  (GET "/blog/" {session :session} (redirect-with-session "/blog" session))
+  (GET "/blog/" {session :session, flash :flash} (cbsession/redirect session flash "/blog"))
   (GET "/blog"
-    {session :session, params :params, uri :uri}
-    (let [session-info (cbauth/make-session-info session)]
-      {:body (cbblog/get-posts session-info 0 cbsettings/posts-per-page)
-        :session session}))
+    {session :session, flash :flash}
+    (cbsession/redirect 
+      (cbsession/session-with-return-url session home-route) 
+      flash 
+      home-route))
 
-  (GET "/blog/archive/" {session :session} (redirect-with-session "/blog/archive" session))
+  (GET "/blog/archive/" {session :session, flash :flash} (cbsession/redirect session flash "/blog/archive"))
   (GET "/blog/archive" 
-    {session :session, params :params, uri :uri}
+    {session :session, params :params, flash :flash, uri :uri}
     ; TODO
     "hullo")
 
-  (GET ["/blog/:start/:count/" :start #"[0-9]+" :count #"[0-9]+"] {session :session, params :params}
-    (redirect-with-session 
-      (apply str ["/blog/" (:start params) "/" (:count params)])
-      session))
+  (GET ["/blog/:start/:count/" :start #"[0-9]+" :count #"[0-9]+"] {session :session, flash :flash, params :params}
+    (cbsession/redirect session flash (apply str ["/blog/" (:start params) "/" (:count params)])))
   (GET ["/blog/:start/:count" :start #"[0-9]+" :count #"[0-9]+"]
-    {session :session, params :params, uri :uri}
+    {session :session, params :params, flash :flash, uri :uri}
     (let [session-info (cbauth/make-session-info session)]
-      {:body (cbblog/get-posts session-info (:start params 0) (:count params 10))
-        :session session}))
+      {:body (cbblog/get-posts session-info flash (:start params 0) (:count params 10))
+        :session (cbsession/session-with-return-url session uri)}))
 
-  (GET ["/post/:id/" :id #"[0-9]+"] {session :session, params :params}
-    (redirect-with-session (apply str ["/post/" (:id params)]) session))
+  (GET ["/post/:id/" :id #"[0-9]+"] {session :session, flash :flash, params :params}
+    (cbsession/redirect session flash (apply str ["/post/" (:id params)])))
   (GET ["/post/:id" :id #"[0-9]+"]
-    {session :session, params :params, uri :uri}
+    {session :session, params :params, flash :flash, uri :uri}
     (let [session-info (cbauth/make-session-info session)]
-      {:body (cbblog/get-post session-info (:id params nil))
-        :session session}))
+      {:body (cbblog/get-post session-info flash (:id params nil))
+        :session (cbsession/session-with-return-url session uri)}))
 
   ; Admin panel
   (POST "/admin/login"
-    {session :session, params :params, uri :uri}
-    (if (cbauth/credentials-valid? params)
-      ;; TODO: Redirect to the previous page.
-      (assoc (response/redirect "/") :session (cbauth/add-admin-session session))
-      ; TODO: Fix this
-      "Invalid credentials, try again"))
+    {session :session, params :params, flash :flash, uri :uri}
+    (cbauth/post-login session params))
 
   (GET "/admin/logout" 
-    {session :session, params :params, uri :uri}
-    (if (cbauth/admin? session)
-      ; TODO: Fix this
-      {:body "Logged out", 
-       :session (dissoc session :admin-session)}
-      {:body "Not logged in!",
-       :session session}))
+    {session :session, params :params, flash :flash, uri :uri}
+    (cbauth/post-logout session params))
 
   (GET ["/admin/edit/post/:id" :id #"[0-9]+"]
-    {session :session, params :params, uri :uri}
+    {session :session, params :params, flash :flash, uri :uri}
     (let [
       session-info (cbauth/make-session-info session)
       authorized (cbauth/admin? session)]
       (if authorized
-        {:body (cbblog/get-post-composer session-info (:id params nil))
+        {:body (cbblog/get-post-composer session-info flash (:id params nil))
           :session session}
-        (response-403 session "You must first log in to edit posts." nil nil))))
+        (response-403 session flash "You must first log in to edit posts." nil nil))))
 
   (GET "/admin/new/post" 
-    {session :session, params :params, uri :uri}
+    {session :session, params :params, flash :flash, uri :uri}
     (let [
       session-info (cbauth/make-session-info session)
       authorized (cbauth/admin? session)]
       (if authorized
-        {:body (cbblog/get-post-composer session-info nil)
+        {:body (cbblog/get-post-composer session-info flash nil)
           :session session}
-        (response-403 session "You must first log in to compose new posts." nil nil))))
+        (response-403 session flash "You must first log in to compose new posts." nil nil))))
 
   (GET ["/admin/delete/post/:id" :id #"[0-9]+"]
-    {session :session, params :params, uri :uri} 
-    (if (cbauth/admin? session) 
-      {:body (cbblog/post-delete! session params)
-        :session session} 
-      (response-403 session "You must first log in to delete posts." nil nil)))
+    {session :session, params :params, flash :flash, uri :uri} 
+    (if (cbauth/admin? session)
+      (cbblog/post-delete! session params)
+      (response-403 session flash "You must first log in to delete posts." nil nil)))
 
   (POST "/admin/submit/post"
-    {session :session, params :params, uri :uri}
+    {session :session, params :params, flash :flash, uri :uri}
     (if (cbauth/admin? session) 
-      {:body (cbblog/post-npsubmit! session params)
-        :session session}
-      (response-403 session nil nil nil)))
+      (cbblog/post-npsubmit! session params)
+      (response-403 session flash nil nil nil)))
+
+  ;; Catchall
+  (GET "/*" {session :session} 
+    (response-404 session nil nil nil))
 
   (route/resources "/")
-  (route/not-found
-    (response-404 nil nil nil)))
+  (route/not-found "???"))
 
 (def app
   ; Note: since we wrap in handler/site we shouldn't need to manually add session middleware

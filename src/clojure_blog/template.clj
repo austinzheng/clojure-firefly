@@ -12,14 +12,14 @@
 
 (declare post-compose)
 
-(defn build-composer [session-info-map post-id post-map]
+(defn build-composer [session-info-map flash-msg post-id post-map]
   "Given a post ID and a post map, build the composer view"
   (let [
     show-delete (not (nil? post-id))
     c-post-map (if post-map post-map {})
     title (:post-title c-post-map "")
     content (:post-content c-post-map "")]
-    (post-compose session-info-map post-id show-delete title content)))
+    (post-compose session-info-map flash-msg post-id show-delete title content)))
 
 (defn- format-date [raw-date]
   "Given a raw date string (long as string), turn it into a formatted date-time string"
@@ -96,11 +96,18 @@
   [:a#new-post] (when is-logged-in (html/set-attr :href new-post-route))
   [:span#credentials] (html/content (if is-logged-in ["Logged in as " username ". "] "")))
 
+;; Snippet for 'flash' messages
+(html/defsnippet flash-snippet "flash-snippet.html"
+  [:div.flash]
+  [flash-msg]
+  [:span#flash-message] (html/content (if flash-msg flash-msg "(no message)")))
+
 ;; Template for the error page
 (html/deftemplate error-page "error.html"
-  [session-info-map error-msg back-link back-msg]
+  [session-info-map flash-msg error-msg back-link back-msg]
   [:title] (html/content "Error")
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:span.message] (html/content (if error-msg error-msg "Sorry, an error seems to have occurred."))
   [:a#goback] (when back-link (html/set-attr :href back-link))
   [:a#goback] (when back-link (html/content (if back-msg back-msg "Back")))
@@ -127,25 +134,29 @@
 
 ;; Template for the single-post page
 (html/deftemplate post-page "post.html"
-  [session-info-map post-id post-map]
+  [session-info-map flash-msg post-id post-map]
   [:title] (html/content [(:title post-map) " - " cbsettings/blog-title])
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:div.post] (html/html-content (reduce str (html/emit* (invoke-post-snippet session-info-map true post-id post-map))))
   [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
 
 ;; Template for the multiple-post blog page
 (html/deftemplate blog-page "blog.html"
-  [session-info-map post-id-list post-map-list]
+  [session-info-map flash-msg post-id-list post-map-list]
   [:title] (html/content cbsettings/blog-title)
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.flash] (when flash-msg (println flash-msg) (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
+  ; [:div.flash] nil
   [:div.posts] (html/html-content (reduce str (map #(reduce str (html/emit* (invoke-post-snippet session-info-map false %1 %2))) post-id-list post-map-list)))
   [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
 
 ;; Template for the blog post composer page
 (html/deftemplate post-compose "compose.html"
-  [session-info-map post-id show-delete title content]
+  [session-info-map flash-msg post-id show-delete title content]
   [:title] (html/content ["Composer - " cbsettings/blog-title])
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:input#post-title] (html/set-attr :value title)
   [:input#post-id] (when post-id (html/set-attr :value post-id))
   [:textarea#post-content] (html/content content)

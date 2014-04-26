@@ -28,20 +28,14 @@ To start a web server for the application, run:
 
 ### Technical
 
-- Fix routes to handle trailing '/'
-- Better delineation of function purpose (e.g. get-blog is explicitly responsible for creating the request body)
 - Properly implement authentication (right now username/password are hardcoded)
 - Persistent sessions and better session security
-- Better template definitions (e.g. no longer set 'unused' attribute as an ugly hack to simulate a no-op)
-- Use 'flash' middleware to provide better user experience after performing action
-- Properly handle error conditions rather than displaying placeholder error string
+- Properly handle error conditions rather than displaying placeholder error string (still at least a few places)
 - Paginate blog entry page
 
 ### Features
 
 - Less eye-bleedingly ugly CSS and HTML
-- Edit status and date shown on posts
-- Links to edit and delete posts on blog entries and elsewhere
 - Other admin tools
 - Blog archive page (list of all blog entries by title)
 - Editor preview
