@@ -14,7 +14,7 @@
 ; NOTE: http://clojuredocs.org/ring/ring.util.response/redirect
 
 ; TODO: these should be variable arity
-(defn response-403
+(defn- response-403
   [session message back-link back-msg]
   (let [
     session-info (cbauth/make-session-info session)
@@ -23,7 +23,7 @@
       :session session
       :body (cbtemplate/error-page session-info error-msg back-link back-msg)}))
 
-(defn response-404 
+(defn- response-404 
   [session back-link back-msg]
   (let [
     session-info (cbauth/make-session-info session)
@@ -31,7 +31,9 @@
     {:status 404
       :session session
       :body (cbtemplate/error-page session-info error-msg back-link back-msg)}))
-  
+
+(defn- redirect-with-session [url session]
+  (assoc (response/redirect url) :session session))
 
 ; TEMP --------
 ; Return a function that itself returns a pre-determined random number
@@ -47,7 +49,7 @@
   (GET "/" 
     {session :session}
     (let [c-session (if session session {})]
-      (assoc (response/redirect (apply str ["/blog/0/" cbsettings/posts-per-page])) :session session)))
+      (redirect-with-session (apply str ["/blog/0/" cbsettings/posts-per-page]) session)))
 
 ;; TEST CODE
   (GET ["/test2/:id" :id #"[0-9]+"] 
@@ -63,31 +65,40 @@
 ;; END TEST CODE
 
   ; Blog
+  (GET "/blog/" {session :session} (redirect-with-session "/blog" session))
   (GET "/blog"
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
     (let [session-info (cbauth/make-session-info session)]
       {:body (cbblog/get-posts session-info 0 cbsettings/posts-per-page)
         :session session}))
 
+  (GET "/blog/archive/" {session :session} (redirect-with-session "/blog/archive" session))
   (GET "/blog/archive" 
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
+    ; TODO
     "hullo")
 
+  (GET ["/blog/:start/:count/" :start #"[0-9]+" :count #"[0-9]+"] {session :session, params :params}
+    (redirect-with-session 
+      (apply str ["/blog/" (:start params) "/" (:count params)])
+      session))
   (GET ["/blog/:start/:count" :start #"[0-9]+" :count #"[0-9]+"]
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
     (let [session-info (cbauth/make-session-info session)]
       {:body (cbblog/get-posts session-info (:start params 0) (:count params 10))
         :session session}))
 
+  (GET ["/post/:id/" :id #"[0-9]+"] {session :session, params :params}
+    (redirect-with-session (apply str ["/post/" (:id params)]) session))
   (GET ["/post/:id" :id #"[0-9]+"]
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
     (let [session-info (cbauth/make-session-info session)]
       {:body (cbblog/get-post session-info (:id params nil))
         :session session}))
 
   ; Admin panel
   (POST "/admin/login"
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
     (if (cbauth/credentials-valid? params)
       ;; TODO: Redirect to the previous page.
       (assoc (response/redirect "/") :session (cbauth/add-admin-session session))
@@ -95,7 +106,7 @@
       "Invalid credentials, try again"))
 
   (GET "/admin/logout" 
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
     (if (cbauth/admin? session)
       ; TODO: Fix this
       {:body "Logged out", 
@@ -104,7 +115,7 @@
        :session session}))
 
   (GET ["/admin/edit/post/:id" :id #"[0-9]+"]
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
     (let [
       session-info (cbauth/make-session-info session)
       authorized (cbauth/admin? session)]
@@ -114,7 +125,7 @@
         (response-403 session "You must first log in to edit posts." nil nil))))
 
   (GET "/admin/new/post" 
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
     (let [
       session-info (cbauth/make-session-info session)
       authorized (cbauth/admin? session)]
@@ -124,14 +135,14 @@
         (response-403 session "You must first log in to compose new posts." nil nil))))
 
   (GET ["/admin/delete/post/:id" :id #"[0-9]+"]
-    {session :session, params :params} 
+    {session :session, params :params, uri :uri} 
     (if (cbauth/admin? session) 
       {:body (cbblog/post-delete! session params)
         :session session} 
       (response-403 session "You must first log in to delete posts." nil nil)))
 
   (POST "/admin/submit/post"
-    {session :session, params :params}
+    {session :session, params :params, uri :uri}
     (if (cbauth/admin? session) 
       {:body (cbblog/post-npsubmit! session params)
         :session session}
