@@ -63,6 +63,17 @@
     cbsettings/new-post-route))
 
 
+;; ENLIVE UTILITY
+
+(defn- no-change []
+  "No-op for enlive"
+  (fn [arg] arg))
+
+(defn- only-if [pred]
+  "Pass through an element unchanged if the predicate is true, otherwise remove it"
+  (if pred (no-change) nil))
+
+
 ;;; GENERAL TEMPLATES
 
 ;; Snippet for the navigation bar
@@ -78,11 +89,11 @@
   [:div.page-footer]
   [is-logged-in username login-route logout-route new-post-route]
   ; Hide login if necessary, and set it up otherwise
-  [:form#login-form] (if is-logged-in nil (html/set-attr :action login-route))
+  [:form#login-form] (when-not is-logged-in (html/set-attr :action login-route))
   ; Hide logout link if necessary, and set it up otherwise
-  [:span.if-logged-in] (if is-logged-in (html/set-attr :unused "") nil)
-  [:a#logout] (if is-logged-in (html/set-attr :href logout-route) nil)
-  [:a#new-post] (if is-logged-in (html/set-attr :href new-post-route) nil)
+  [:span.if-logged-in] (only-if is-logged-in)
+  [:a#logout] (when is-logged-in (html/set-attr :href logout-route))
+  [:a#new-post] (when is-logged-in (html/set-attr :href new-post-route))
   [:span#credentials] (html/content (if is-logged-in ["Logged in as " username ". "] "")))
 
 ;; Template for the error page
@@ -91,8 +102,8 @@
   [:title] (html/content "Error")
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
   [:span.message] (html/content (if error-msg error-msg "Sorry, an error seems to have occurred."))
-  [:a#goback] (if back-link (html/set-attr :href back-link) nil)
-  [:a#goback] (if back-link (html/content (if back-msg back-msg "Back")) nil)
+  [:a#goback] (when back-link (html/set-attr :href back-link))
+  [:a#goback] (when back-link (html/content (if back-msg back-msg "Back")))
   [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
 
 
@@ -102,15 +113,15 @@
 (html/defsnippet post-snippet "post-snippet.html" 
   [:div.post]
   [is-single is-logged-in post-id title date content is-edited edit-date]
-  [:h2#post-title] (if is-single (html/content title) nil)
-  [:h2#link-post-title] (if is-single nil (html/set-attr :unused ""))
-  [:a#title-link] (if is-single nil (html/content title))
-  [:a#title-link] (if is-single nil (html/set-attr :href (cbsettings/blog-post-route post-id)))
-  [:span.if-logged-in] (if is-logged-in (html/set-attr :unused "") nil)
-  [:a#edit-post] (if is-logged-in (html/set-attr :href (cbsettings/edit-post-route post-id)) nil)
-  [:a#delete-post] (if is-logged-in (html/set-attr :href (cbsettings/delete-post-route post-id)) nil)
-  [:span#edit-note] (if is-edited (html/content (if edit-date ["Last edited: " edit-date] "Edited")) nil)
-  [:span.if-edited] (if is-edited (html/set-attr :unused "") nil)
+  [:h2#post-title] (when is-single (html/content title))
+  [:h2#link-post-title] (only-if (not is-single))
+  [:a#title-link] (when-not is-single (html/content title))
+  [:a#title-link] (when-not is-single (html/set-attr :href (cbsettings/blog-post-route post-id)))
+  [:span.if-logged-in] (only-if is-logged-in)
+  [:a#edit-post] (when is-logged-in (html/set-attr :href (cbsettings/edit-post-route post-id)))
+  [:a#delete-post] (when is-logged-in (html/set-attr :href (cbsettings/delete-post-route post-id)))
+  [:span#edit-note] (when is-edited (html/content (if edit-date ["Last edited: " edit-date] "Edited")))
+  [:span.if-edited] (only-if is-edited)
   [:span.date] (html/content date)
   [:div.content] (html/html-content content))
 
@@ -136,8 +147,8 @@
   [:title] (html/content ["Composer - " cbsettings/blog-title])
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
   [:input#post-title] (html/set-attr :value title)
-  [:input#post-id] (if post-id (html/set-attr :value post-id) nil)
+  [:input#post-id] (when post-id (html/set-attr :value post-id))
   [:textarea#post-content] (html/content content)
   [:button#action-submit] (html/set-attr :name (if post-id "edit-post" "add-post"))
-  [:span#delete-button] (if show-delete (html/html-content "<button name=\"delete\" type=\"submit\">Delete</button>") nil)
+  [:span#delete-button] (when show-delete (html/html-content "<button name=\"delete\" type=\"submit\">Delete</button>"))
   [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))

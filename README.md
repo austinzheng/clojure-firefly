@@ -35,11 +35,14 @@ To start a web server for the application, run:
 - Better template definitions (e.g. no longer set 'unused' attribute as an ugly hack to simulate a no-op)
 - Use 'flash' middleware to provide better user experience after performing action
 - Properly handle error conditions rather than displaying placeholder error string
+- Paginate blog entry page
 
 ### Features
 
 - Less eye-bleedingly ugly CSS and HTML
-- Admin page and/or better support for admin tools
+- Edit status and date shown on posts
+- Links to edit and delete posts on blog entries and elsewhere
+- Other admin tools
 - Blog archive page (list of all blog entries by title)
 - Editor preview
 - About page
