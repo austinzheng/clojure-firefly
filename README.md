@@ -19,7 +19,7 @@ To start a web server for the application, run:
 ## Features
 
 - Integration with redis
-- Create, edit, and delete blog posts
+- Create, edit, preview, and delete blog posts
 - View a single blog post
 - View a configurable range of blog posts
 - Rudimentary access control for blog admin tools
@@ -36,9 +36,8 @@ To start a web server for the application, run:
 ### Features
 
 - Less eye-bleedingly ugly CSS and HTML
-- Other admin tools
 - Blog archive page (list of all blog entries by title)
-- Editor preview
+- Saving draft posts
 - About page
 - Curated links feature
 - Tags for blog posts and links

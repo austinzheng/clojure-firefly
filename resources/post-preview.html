@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Preview Post</title>
+  </head>
+  <body>
+    <div class="nav"></div>
+    <div class="flash"></div>
+    <div class="post"></div>
+    <hr />
+    <div class="input">
+      <form action="/admin/submit/post" method="post">
+        <input id="post-id" type="hidden" name="post-id" />
+        <input id="post-title" type="hidden" name="post-title" />
+        <input id="post-content" type="hidden" name="post-content" />
+        <div>
+          <span><button name="continue-editing" type="submit">Edit</button></span>
+          <span><button id="action-submit" name="unassigned" type="submit">Submit</button></span>
+        </div>
+      </form>
+    </div>
+    <div class="footer"></div>
+  </body>
+</html>

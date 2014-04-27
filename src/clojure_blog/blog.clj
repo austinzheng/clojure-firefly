@@ -17,28 +17,49 @@
     post-title (:post-title params "")
     post-content (:post-content params "")
     can-create (and (cbutil/nonempty? post-title) (cbutil/nonempty? post-content))
-    post-id (if can-create (cbdb/add-post! post-title post-content) nil)
+    post-id (when can-create (cbdb/add-post! post-title post-content))
     flash-msg (if post-id "Post created." "Couldn't create post!")]
     (cbsession/redirect session flash-msg return-url)))
 
 (defn action-edit-post! [session params]
   "Edit an existing post"
   (let [
-    new-title (:post-title params "")
-    new-content (:post-content params "")
+    new-title (:post-title params nil)
+    new-content (:post-content params nil)
     post-id (:post-id params nil)
     can-edit (and 
       (cbutil/nonempty? new-title) 
       (cbutil/nonempty? new-content) 
       (cbutil/nonempty? post-id))
-    success (if can-edit (cbdb/edit-post! post-id new-title new-content) nil)
+    success (when can-edit (cbdb/edit-post! post-id new-title new-content))
     flash-msg (if success "Post edited." "Couldn't edit post!")]
     (cbsession/redirect session flash-msg (:return-url session "/"))))
 
 (defn action-create-preview [session params]
-  ; Stuff to check the session
-  ;; TODO
-  (if params (apply str (concat ["Params: "] params)) "No params, for some reason"))
+  (let [
+    session-info (cbauth/make-session-info session)
+    title (:post-title params)
+    content (:post-content params nil)
+    post-id (:post-id params nil)
+    can-submit (and (cbutil/nonempty? title) (cbutil/nonempty? content))
+    response-body (cbtemplate/post-preview session-info nil can-submit post-id title content)]
+    {
+      :body response-body
+      :session session
+    }))
+
+(defn action-resume-editing [session params]
+  (let [
+    session-info (cbauth/make-session-info session)
+    post-id (:post-id params nil)
+    show-delete (not (nil? post-id))
+    title (:post-title params)
+    content (:post-content params)
+    response-body (cbtemplate/post-compose session-info nil post-id show-delete title content)]
+    {
+      :body response-body
+      :session session  
+    }))
 
 (defn action-delete-post! [session post-id]
   (let [
@@ -61,8 +82,9 @@
     (contains? params :add-post) (action-create-post! session params)
     (contains? params :edit-post) (action-edit-post! session params)
     (contains? params :preview) (action-create-preview session params)
+    (contains? params :continue-editing) (action-resume-editing session params)
     (contains? params :delete) (action-delete-post! session (:post-id params)) 
-    :else (cbtemplate/error-page (cbauth/make-session-info session) "An error occurred." nil nil)))
+    :else (cbsession/redirect session "An error occurred" (:return-url session "/"))))
 
 
 ;; 'format-' functions generate HTML for a given blog page.
@@ -89,7 +111,7 @@
     (let [post-map (cbdb/get-post post-id)]
       (if post-map
         (format-composer-edit session-info flash-msg post-id post-map)
-        (cbtemplate/error-page flash-msg session-info "Cannot edit post. Invalid post ID." nil nil)))
+        (cbtemplate/error-page session-info flash-msg "Cannot edit post. Invalid post ID." nil nil)))
     (format-composer-new session-info flash-msg)))
 
 (defn get-post [session-info flash-msg post-id] 
@@ -97,14 +119,14 @@
   (let [post-map (cbdb/get-post post-id)]
     (if post-map
       (format-post session-info flash-msg post-id post-map)
-      (cbtemplate/error-page flash-msg session-info "Could not retrieve post." nil nil))))
+      (cbtemplate/error-page session-info flash-msg "Could not retrieve post." nil nil))))
 
 (defn get-posts [session-info flash-msg raw-start raw-post-count]
   "Given a start index and a number of posts, return as many posts as possible"
   (let [
     start (cbutil/parse-integer raw-start)
     post-count (cbutil/parse-integer raw-post-count)
-    [post-id-list post-map-list] (if (and start post-count) (cbdb/get-posts start post-count) nil)]
+    [post-id-list post-map-list] (when (and start post-count) (cbdb/get-posts start post-count))]
     (if post-map-list
       (format-blog session-info flash-msg post-id-list post-map-list)
-      (cbtemplate/error-page flash-msg session-info "Could not retrieve the requested posts." nil nil))))
+      (cbtemplate/error-page session-info flash-msg "Could not retrieve the requested posts." nil nil))))

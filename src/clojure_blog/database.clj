@@ -23,10 +23,8 @@
         (car/parse-map 
           (car/hgetall 
             (post-base-key post-id)))) (catch Exception e nil))]
-    (if 
-      raw-map 
-      (cbutil/map-function-on-map-keys raw-map keyword) 
-      nil)))
+    (when raw-map 
+      (cbutil/map-function-on-map-keys raw-map keyword))))
 
 (defn get-posts [start num-posts]
   "Get a number of blog posts from redis, with a start index and a count. If either the start index or count are

@@ -1,6 +1,7 @@
 (ns clojure-blog.template
    (:require 
     [clojure-blog.util :as cbutil]
+    [clojure-blog.routes :as cbroutes]
     [clojure-blog.settings :as cbsettings]
     [net.cgrand.enlive-html :as html]
     [clj-time.core :as time-core]
@@ -54,16 +55,16 @@
   (header-snippet
     cbsettings/blog-title
     cbsettings/blog-subtitle
-    cbsettings/main-route))
+    cbroutes/main-route))
 
 (defn- invoke-footer-snippet [session-info-map]
   "Generate the HTML for the blog footer"
   (footer-snippet
     (:logged-in session-info-map false)
     (:username session-info-map)
-    cbsettings/login-route
-    cbsettings/logout-route
-    cbsettings/new-post-route))
+    cbroutes/login-route
+    cbroutes/logout-route
+    cbroutes/new-post-route))
 
 
 ;; ENLIVE UTILITY
@@ -126,13 +127,28 @@
   [:h2#post-title] (when is-single (html/content title))
   [:h2#link-post-title] (only-if (not is-single))
   [:a#title-link] (when-not is-single (html/content title))
-  [:a#title-link] (when-not is-single (html/set-attr :href (cbsettings/blog-post-route post-id)))
+  [:a#title-link] (when-not is-single (html/set-attr :href (cbroutes/blog-post-route post-id)))
   [:span.if-logged-in] (only-if is-logged-in)
-  [:a#edit-post] (when is-logged-in (html/set-attr :href (cbsettings/edit-post-route post-id)))
-  [:a#delete-post] (when is-logged-in (html/set-attr :href (cbsettings/delete-post-route post-id)))
+  [:a#edit-post] (when is-logged-in (html/set-attr :href (cbroutes/edit-post-route post-id)))
+  [:a#delete-post] (when is-logged-in (html/set-attr :href (cbroutes/delete-post-route post-id)))
   [:span#edit-note] (when is-edited (html/content (if edit-date ["Last edited: " edit-date] "Edited")))
   [:span.if-edited] (only-if is-edited)
-  [:span.date] (html/content date)
+  [:span#date] (html/content (apply str ["Date: " date]))
+  [:div.content] (html/html-content content))
+
+;; Snippet for a post preview
+(html/defsnippet post-preview-snippet "post-snippet.html" 
+  [:div.post]
+  [title content]
+  [:h2#post-title] (html/content title)
+  [:h2#link-post-title] nil
+  [:a#title-link] nil
+  [:span.if-logged-in] nil
+  [:a#edit-post] nil
+  [:a#delete-post] nil
+  [:span#edit-note] nil
+  [:span.if-edited] nil
+  [:span#date] (html/content "(Preview Mode)")
   [:div.content] (html/html-content content))
 
 ;; Template for the single-post page
@@ -149,13 +165,12 @@
   [session-info-map flash-msg post-id-list post-map-list]
   [:title] (html/content cbsettings/blog-title)
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
-  [:div.flash] (when flash-msg (println flash-msg) (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
-  ; [:div.flash] nil
+  [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:div.posts] (html/html-content (reduce str (map #(reduce str (html/emit* (invoke-post-snippet session-info-map false %1 %2))) post-id-list post-map-list)))
   [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
 
 ;; Template for the blog post composer page
-(html/deftemplate post-compose "compose.html"
+(html/deftemplate post-compose "post-compose.html"
   [session-info-map flash-msg post-id show-delete title content]
   [:title] (html/content ["Composer - " cbsettings/blog-title])
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
@@ -166,3 +181,14 @@
   [:button#action-submit] (html/set-attr :name (if post-id "edit-post" "add-post"))
   [:span#delete-button] (when show-delete (html/html-content "<button name=\"delete\" type=\"submit\">Delete</button>"))
   [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
+
+;; Template for the blog post preview page
+(html/deftemplate post-preview "post-preview.html"
+  [session-info-map flash-msg can-submit post-id title content]
+  [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
+  [:div.post] (html/html-content (reduce str (html/emit* (post-preview-snippet title content))))
+  [:input#post-id] (when post-id (html/set-attr :value post-id))
+  [:input#post-title] (html/set-attr :value title)
+  [:input#post-content] (html/set-attr :value content)
+  [:button#action-submit] (when can-submit (html/set-attr :name (if post-id "edit-post" "add-post"))))

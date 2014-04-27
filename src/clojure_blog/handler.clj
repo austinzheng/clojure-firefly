@@ -21,9 +21,11 @@
     flash-msg flash
     session-info (cbauth/make-session-info session)
     error-msg (if message message "You must first log in.")]
-    {:status 403
+    {
+      :status 403
       :session session
-      :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)}))
+      :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)
+    }))
 
 (defn- response-404 
   [session flash back-link back-msg]
@@ -31,9 +33,11 @@
     flash-msg flash
     session-info (cbauth/make-session-info session)
     error-msg "404: The requested resource couldn't be found."]
-    {:status 404
+    {
+      :status 404
       :session session
-      :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)}))
+      :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)
+    }))
 
 
 ;; APP ROUTES
@@ -46,7 +50,7 @@
       flash
       home-route))
 
-  ; Blog
+  ;; BLOG
   (GET "/blog/" {session :session, flash :flash} (cbsession/redirect session flash "/blog"))
   (GET "/blog"
     {session :session, flash :flash}
@@ -66,18 +70,22 @@
   (GET ["/blog/:start/:count" :start #"[0-9]+" :count #"[0-9]+"]
     {session :session, params :params, flash :flash, uri :uri}
     (let [session-info (cbauth/make-session-info session)]
-      {:body (cbblog/get-posts session-info flash (:start params 0) (:count params 10))
-        :session (cbsession/session-with-return-url session uri)}))
+      {
+        :body (cbblog/get-posts session-info flash (:start params 0) (:count params 10))
+        :session (cbsession/session-with-return-url session uri)
+      }))
 
   (GET ["/post/:id/" :id #"[0-9]+"] {session :session, flash :flash, params :params}
     (cbsession/redirect session flash (apply str ["/post/" (:id params)])))
   (GET ["/post/:id" :id #"[0-9]+"]
     {session :session, params :params, flash :flash, uri :uri}
     (let [session-info (cbauth/make-session-info session)]
-      {:body (cbblog/get-post session-info flash (:id params nil))
-        :session (cbsession/session-with-return-url session uri)}))
+      {
+        :body (cbblog/get-post session-info flash (:id params nil))
+        :session (cbsession/session-with-return-url session uri)
+      }))
 
-  ; Admin panel
+  ;; ADMIN FUNCTIONALITY
   (POST "/admin/login"
     {session :session, params :params, flash :flash, uri :uri}
     (cbauth/post-login session params))
@@ -92,8 +100,10 @@
       session-info (cbauth/make-session-info session)
       authorized (cbauth/admin? session)]
       (if authorized
-        {:body (cbblog/get-post-composer session-info flash (:id params nil))
-          :session session}
+        {
+          :body (cbblog/get-post-composer session-info flash (:id params nil))
+          :session session
+        }
         (response-403 session flash "You must first log in to edit posts." nil nil))))
 
   (GET "/admin/new/post" 
@@ -102,8 +112,10 @@
       session-info (cbauth/make-session-info session)
       authorized (cbauth/admin? session)]
       (if authorized
-        {:body (cbblog/get-post-composer session-info flash nil)
-          :session session}
+        {
+          :body (cbblog/get-post-composer session-info flash nil)
+          :session session
+        }
         (response-403 session flash "You must first log in to compose new posts." nil nil))))
 
   (GET ["/admin/delete/post/:id" :id #"[0-9]+"]
