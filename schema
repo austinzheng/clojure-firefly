@@ -20,5 +20,5 @@ IMAGES are stored in the following manner:
 - Maps, each containing the image filenames for a given blog post. Maps are named "img:post:<id>", where <id> is the post ID of the post in question.
 
 TAGS are stored in the following manner:
-- Maps, each containing the tags for a given blog post. Maps are named "tag:post:<id>", where <id> is the post ID of the post in question.
-- Map ("tag-list"), whose keys are tag strings and whose values are a list of blog post IDs where that tag is used.
+- All tags for a given post are stored in a list whose key is "post:tags:<id>", where <id> is the post ID. The list values are the tag strings.
+- Each tag has a associated list at the key "tag:<tag>", where <tag> is the name of the tag. The list contents are IDs of posts using that tag.

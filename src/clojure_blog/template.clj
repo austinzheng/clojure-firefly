@@ -154,7 +154,7 @@
 ;; Template for the single-post page
 (html/deftemplate post-page "post.html"
   [session-info-map flash-msg post-id post-map]
-  [:title] (html/content [(:title post-map) " - " cbsettings/blog-title])
+  [:title] (html/content [(:post-title post-map "Post") " - " cbsettings/blog-title])
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:div.post] (html/html-content (reduce str (html/emit* (invoke-post-snippet session-info-map true post-id post-map))))

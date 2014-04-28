@@ -39,7 +39,7 @@
     post-title (:post-title params "")
     post-content (:post-content params "")
     can-create (and (cbutil/nonempty? post-title) (cbutil/nonempty? post-content))
-    post-id (when can-create (cbdb/add-post! post-title post-content))
+    post-id (when can-create (cbdb/add-post! post-title post-content nil)) ; TODO
     flash-msg (if post-id "Post created." "Couldn't create post!")]
     (cbsession/redirect session flash-msg return-url)))
 
@@ -53,7 +53,7 @@
       (cbutil/nonempty? new-title) 
       (cbutil/nonempty? new-content) 
       (cbutil/nonempty? post-id))
-    success (when can-edit (cbdb/edit-post! post-id new-title new-content))
+    success (when can-edit (cbdb/edit-post! post-id new-title new-content nil nil)) ; TODO
     flash-msg (if success "Post edited." "Couldn't edit post!")]
     (cbsession/redirect session flash-msg (:return-url session "/"))))
 
