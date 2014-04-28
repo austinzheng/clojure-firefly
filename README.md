@@ -19,10 +19,9 @@ To start a web server for the application, run:
 ## Features
 
 - Integration with redis
+- View either a single blog post or any range of posts
 - Create, edit, preview, and delete blog posts
-- View a single blog post
-- View a configurable range of blog posts
-- Rudimentary access control for blog admin tools
+- Log in as administrator to manage blog
 
 ## To Be Done
 
@@ -30,8 +29,6 @@ To start a web server for the application, run:
 
 - Properly implement authentication (right now username/password are hardcoded)
 - Persistent sessions and better session security
-- Properly handle error conditions rather than displaying placeholder error string (still at least a few places)
-- Paginate blog entry page
 
 ### Features
 

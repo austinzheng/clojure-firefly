@@ -14,7 +14,7 @@
 (defn- post-base-key [post-id] 
   (apply str ["post:" post-id]))
 
-; Post-related API
+
 (defn get-post [post-id]
   "Get a blog post (as post-map) from redis based on the post ID, or nil if it doesn't exist." 
   (let [
@@ -31,10 +31,10 @@
   invalid, returns nil. Returns a tuple, the first element is a list of IDs and the second element is a list of
   post-map objects."
   (let [
-    post-count (wcar* (car/llen :post-list))
+    post-count (try (wcar* (car/llen :post-list)) (catch Exception e 0))
     adj-num-posts (min num-posts (- post-count start))
     can-retrieve (and (>= start 0) (< start post-count))]
-    (if can-retrieve 
+    (when can-retrieve 
       (let [
         id-seq (seq (wcar* (car/lrange :post-list start (+ -1 start adj-num-posts))))
         getter-func (defn gf [so-far remaining]
@@ -52,7 +52,7 @@
                     wcar*) keyword) so-far)
               (rest remaining))))]
         (try
-          [id-seq (gf [] (reverse id-seq))]
+          [(gf [] (reverse id-seq)) {:post-count post-count :id-seq id-seq}]
           (catch Exception e nil))))))
 
 (defn add-post! [post-title post-content]

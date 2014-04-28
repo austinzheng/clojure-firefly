@@ -14,9 +14,8 @@
 ;; UTILITY GENERATORS
 (def home-route (apply str ["/blog/0/" cbsettings/posts-per-page]))
 
-; TODO: these should be variable arity
 (defn- response-403
-  [session flash message back-link back-msg]
+  [session flash & {:keys [message back-link back-msg]}]
   (let [
     flash-msg flash
     session-info (cbauth/make-session-info session)
@@ -28,7 +27,7 @@
     }))
 
 (defn- response-404 
-  [session flash back-link back-msg]
+  [session flash & {:keys [back-link back-msg]}]
   (let [
     flash-msg flash
     session-info (cbauth/make-session-info session)
@@ -104,7 +103,10 @@
           :body (cbblog/get-post-composer session-info flash (:id params nil))
           :session session
         }
-        (response-403 session flash "You must first log in to edit posts." nil nil))))
+        (response-403 
+          session
+          flash
+          :message "You must first log in to edit posts."))))
 
   (GET "/admin/new/post" 
     {session :session, params :params, flash :flash, uri :uri}
@@ -116,23 +118,29 @@
           :body (cbblog/get-post-composer session-info flash nil)
           :session session
         }
-        (response-403 session flash "You must first log in to compose new posts." nil nil))))
+        (response-403
+          session
+          flash
+          :message "You must first log in to compose new posts."))))
 
   (GET ["/admin/delete/post/:id" :id #"[0-9]+"]
     {session :session, params :params, flash :flash, uri :uri} 
     (if (cbauth/admin? session)
       (cbblog/post-delete! session params)
-      (response-403 session flash "You must first log in to delete posts." nil nil)))
+      (response-403 
+        session 
+        flash 
+        :message "You must first log in to delete posts.")))
 
   (POST "/admin/submit/post"
     {session :session, params :params, flash :flash, uri :uri}
     (if (cbauth/admin? session) 
       (cbblog/post-npsubmit! session params)
-      (response-403 session flash nil nil nil)))
+      (response-403 session flash)))
 
   ;; Catchall
-  (GET "/*" {session :session} 
-    (response-404 session nil nil nil))
+  (GET "/*" {session :session, flash :flash} 
+    (response-404 session flash))
 
   (route/resources "/")
   (route/not-found "???"))

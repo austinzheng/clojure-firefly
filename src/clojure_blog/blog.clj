@@ -4,8 +4,30 @@
     [clojure-blog.database :as cbdb]
     [clojure-blog.template :as cbtemplate]
     [clojure-blog.auth :as cbauth]
+    [clojure-blog.routes :as cbroutes]
     [clojure-blog.util :as cbutil]
+    [clojure-blog.settings :as cbsettings]
     [ring.middleware.flash :as flash]))
+
+;; Utility functions
+(defn- next-route [start number total]
+  (let [
+    next-start (+ start number)
+    next-number (min (- total next-start) cbsettings/posts-per-page)
+    has-next (> total next-start)]
+    (when has-next (cbroutes/blog-route next-start next-number))))
+
+(defn- prev-route [start number total]
+  (let [
+    prev-start (max 0 (- start cbsettings/posts-per-page))
+    prev-number (min start cbsettings/posts-per-page)
+    has-prev (> start 0)]
+    (when has-prev (cbroutes/blog-route prev-start prev-number))))
+
+(defn- nav-description [start number]
+  (if (= 1 number)
+    (reduce str ["Currently showing post " (+ 1 start)])
+    (reduce str ["Currently showing posts " (+ 1 start) " through " (+ start number)])))
 
 
 ;; 'action-' functions handle processing/state mutation related to an action.
@@ -99,9 +121,13 @@
   "Given raw data from the database, generate the HTML for a single post"
   (reduce str (cbtemplate/post-page session-info flash-msg post-id post-map)))
 
-(defn format-blog [session-info flash-msg post-id-list post-map-list]
+(defn format-blog [session-info flash-msg post-id-list post-map-list start number total]
   "Given raw data from the database, generate the HTML for a page of posts"
-  (reduce str (cbtemplate/blog-page session-info flash-msg post-id-list post-map-list)))
+  (let [
+    desc (nav-description start number)
+    prev-url (prev-route start number total)
+    next-url (next-route start number total)]
+    (reduce str (cbtemplate/blog-page session-info flash-msg post-id-list post-map-list prev-url "Newer" desc next-url "Older"))))
 
 
 ;; 'get-' functions provide an interface for getting the :body of a response to a GET request.
@@ -121,12 +147,12 @@
       (format-post session-info flash-msg post-id post-map)
       (cbtemplate/error-page session-info flash-msg "Could not retrieve post." nil nil))))
 
-(defn get-posts [session-info flash-msg raw-start raw-post-count]
+(defn get-posts [session-info flash-msg raw-start raw-number]
   "Given a start index and a number of posts, return as many posts as possible"
   (let [
     start (cbutil/parse-integer raw-start)
-    post-count (cbutil/parse-integer raw-post-count)
-    [post-id-list post-map-list] (when (and start post-count) (cbdb/get-posts start post-count))]
+    n (cbutil/parse-integer raw-number)
+    [post-map-list {:keys [id-seq post-count]}] (when (and start n) (cbdb/get-posts start n))]
     (if post-map-list
-      (format-blog session-info flash-msg post-id-list post-map-list)
+      (format-blog session-info flash-msg id-seq post-map-list start (count post-map-list) post-count)
       (cbtemplate/error-page session-info flash-msg "Could not retrieve the requested posts." nil nil))))

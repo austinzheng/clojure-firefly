@@ -162,11 +162,18 @@
 
 ;; Template for the multiple-post blog page
 (html/deftemplate blog-page "blog.html"
-  [session-info-map flash-msg post-id-list post-map-list]
+  [session-info-map flash-msg post-id-list post-map-list prev-url prev-description current-nav-description next-url next-description]
   [:title] (html/content cbsettings/blog-title)
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:div.posts] (html/html-content (reduce str (map #(reduce str (html/emit* (invoke-post-snippet session-info-map false %1 %2))) post-id-list post-map-list)))
+  [:a#blog-prev-link] (html/set-attr :href prev-url)
+  [:a#blog-prev-link] (html/content prev-description)
+  [:span.has-prev] (only-if prev-url)
+  [:a#blog-next-link] (html/set-attr :href next-url)
+  [:a#blog-next-link] (html/content next-description)
+  [:span.has-next] (only-if next-url)
+  [:span#blog-current] (html/content (if current-nav-description current-nav-description "-"))
   [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
 
 ;; Template for the blog post composer page
