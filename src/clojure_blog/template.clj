@@ -1,5 +1,6 @@
 (ns clojure-blog.template
-   (:require 
+   (:require
+    [clojure-blog.tags :as cbtags]
     [clojure-blog.util :as cbutil]
     [clojure-blog.routes :as cbroutes]
     [clojure-blog.settings :as cbsettings]
@@ -25,7 +26,6 @@
     content (:post-content c-post-map "")
     tags-list (:post-tags c-post-map nil)
     tags (if tags-list (cbtags/join-tags tags-list) "")]
-    (println (reduce str ["STUPID DEBUG: tags is now " tags]))
     (post-compose session-info-map flash-msg post-id show-delete title content tags tags)))
 
 (defn- format-date [raw-date]
@@ -43,7 +43,8 @@
     {title :post-title date :post-date content :post-content is-edited :post-edited edit-date :post-edit-date} post-map
     formatted-date (format-date date)
     formatted-edit-date (format-date edit-date)
-    ]
+    tags (:post-tags post-map nil)
+    formatted-tags (cbtags/tags-html-for-tags tags)]
     (post-snippet 
       is-single 
       (:logged-in session-info-map false)
@@ -52,7 +53,8 @@
       formatted-date
       content 
       is-edited
-      formatted-edit-date)))
+      formatted-edit-date
+      formatted-tags)))
 
 (defn- invoke-header-snippet [session-info-map]
   "Generate the HTML for the blog header"
@@ -127,7 +129,7 @@
 ;; Snippet for a single post entry
 (html/defsnippet post-snippet "post-snippet.html" 
   [:div.post]
-  [is-single is-logged-in post-id title date content is-edited edit-date]
+  [is-single is-logged-in post-id title date content is-edited edit-date html-tag-data]
   [:h2#post-title] (when is-single (html/content title))
   [:h2#link-post-title] (only-if (not is-single))
   [:a#title-link] (when-not is-single (html/content title))
@@ -138,6 +140,7 @@
   [:span#edit-note] (when is-edited (html/content (if edit-date ["Last edited: " edit-date] "Edited")))
   [:span.if-edited] (only-if is-edited)
   [:span#date] (html/content (apply str ["Date: " date]))
+  [:span#tags-list] (html/html-content html-tag-data)
   [:div.content] (html/html-content content))
 
 ;; Snippet for a post preview

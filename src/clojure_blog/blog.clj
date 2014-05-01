@@ -30,6 +30,9 @@
     (reduce str ["Currently showing post " (+ 1 start)])
     (reduce str ["Currently showing posts " (+ 1 start) " through " (+ start number)])))
 
+(defn- tag-description [tag]
+  (reduce str ["Currently showing posts for tag '" tag "'"]))
+
 
 ;; 'action-' functions handle processing/state mutation related to an action.
 
@@ -140,6 +143,12 @@
     next-url (next-route start number total)]
     (reduce str (cbtemplate/blog-page session-info flash-msg post-id-list post-map-list prev-url "Newer" desc next-url "Older"))))
 
+(defn format-blog-for-tag [session-info flash-msg post-id-list post-map-list tag]
+  "Given raw data from the database, generate the HTML for a page of posts"
+  (let [
+    desc (tag-description tag)]
+    (reduce str (cbtemplate/blog-page session-info flash-msg post-id-list post-map-list nil nil desc nil nil))))
+
 
 ;; 'get-' functions provide an interface for getting the :body of a response to a GET request.
 
@@ -167,3 +176,13 @@
     (if post-map-list
       (format-blog session-info flash-msg id-seq post-map-list start (count post-map-list) post-count)
       (cbtemplate/error-page session-info flash-msg "Could not retrieve the requested posts." nil nil))))
+
+(defn get-posts-for-tag [session-info flash-msg tag]
+  "Given a tag, return the posts for that tag or an error."
+  (let [
+    valid (cbtags/tag-valid? tag)
+    [post-map-list {:keys [id-seq]}] (when valid (cbdb/get-posts-for-tag tag))
+    error-msg (reduce str ["Could not retrieve posts for the tag '" tag "'"])]
+    (if post-map-list
+      (format-blog-for-tag session-info flash-msg id-seq post-map-list tag)
+      (cbtemplate/error-page session-info flash-msg error-msg nil nil))))

@@ -46,9 +46,17 @@
         id-seq (seq (wcar* (car/lrange :post-list start (+ -1 start adj-num-posts))))
         post-data (map get-post id-seq)] 
         ;; Honestly, would prefer to get post-data pipelined. But I couldn't get macros to do what I wanted.
-        (try
-          [post-data {:post-count post-count :id-seq id-seq}]
-          (catch Exception e nil))))))
+        [post-data {:post-count post-count :id-seq id-seq}]))))
+
+(defn get-posts-for-ids [post-ids]
+  "Get a number of blog posts from redis, same as get-posts, but specifying a list of post IDs."
+  (if 
+    (or (nil? post-ids) (= 0 (count post-ids)))
+    nil
+    (let [
+      post-data (map get-post post-ids)
+      post-count (count post-data)]
+      [post-data {:post-count post-count :id-seq post-ids}])))
 
 (defn add-post! [post-title post-content tags]
   "Add a new post to the database; returns the post ID, or nil if failed."
@@ -139,6 +147,15 @@
       (doall (map #(let [k (posts-for-tag-key %)] (wcar* (car/lrem k 0 post-id))) removed))
       true
       (catch Exception e false))))
+
+(defn- post-ids-for-tag [tag-name]
+  (let [
+    valid (cbtags/tag-valid? tag-name)
+    k (when valid (posts-for-tag-key tag-name))]
+    (when k (try (wcar* (car/lrange k 0 -1)) (catch Exception e nil)))))
+
+(defn get-posts-for-tag [tag-name]
+  (get-posts-for-ids (post-ids-for-tag tag-name)))
 
 
 ; Links-related API

@@ -1,9 +1,16 @@
 (ns clojure-blog.tags
   (:require 
+    [clojure-blog.routes :as cbroutes]
     [clojure.string :as s]))
 
+(defn tag-valid? [tag]
+  "Return whether a potential tag value is valid for further operations"
+  (and 
+    (string? tag)
+    (> (count tag) 0)))
+
 (defn remove-empty [tags-list]
-  (filter #(and (not (nil? %)) (> (count %) 0)) tags-list))
+  (filter tag-valid? tags-list))
 
 (defn split-raw-tags [raw-tags]
   "Split a raw string containing comma-separated tags into a list of tags, excepting empty or blank tags"
@@ -14,3 +21,14 @@
   (if (= 0 (count tags-list))
     ""
     (s/join ", " tags-list)))
+
+(defn tags-html-for-tags [tags-list]
+  "Given a list of tags, turn it into HTML appropriate for the tags system"
+  (if (or (nil? tags-list) (= 0 (count tags-list))) 
+    "(No tags)"
+    (let [
+      preceding-tags (butlast tags-list)
+      last-tag (last tags-list)
+      formatted-preceding (reduce str (map #(reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route %) "\">" % "</a>, "]) preceding-tags))
+      formatted-last (reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route last-tag) "\">" last-tag "</a>"])]
+      (reduce str ["Tags: " formatted-preceding formatted-last]))))

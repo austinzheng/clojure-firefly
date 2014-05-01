@@ -6,6 +6,7 @@
 ;; Blog routes
 (defn blog-route [start number] (apply str ["/blog/" start "/" number]))
 (defn blog-post-route [post-id] (apply str ["/post/" post-id]))
+(defn blog-posts-for-tag-route [tag] (apply str ["/posts/tag/" tag]))
 
 ;; Admin routes
 (def login-route "/admin/login")

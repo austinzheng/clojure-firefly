@@ -84,6 +84,16 @@
         :session (cbsession/session-with-return-url session uri)
       }))
 
+  (GET "/posts/tag/:tag/" {session :session, flash :flash, params :params}
+    (cbsession/redirect session flash (apply str ["/post/tag/" (:tag params)])))
+  (GET "/posts/tag/:tag"
+    {session :session, params :params, flash :flash, uri :uri}
+    (let [session-info (cbauth/make-session-info session)] 
+      {
+        :body (cbblog/get-posts-for-tag session-info flash (:tag params))
+        :session (cbsession/session-with-return-url session uri)
+      }))
+
   ;; ADMIN FUNCTIONALITY
   (POST "/admin/login"
     {session :session, params :params, flash :flash, uri :uri}
