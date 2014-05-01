@@ -1,10 +1,12 @@
 (ns clojure-blog.database
   (:require 
-  	[clojure-blog.util :as cbutil]
+    [clojure-blog.tags :as cbtags]
+    [clojure-blog.util :as cbutil]
     [taoensso.carmine :as car :refer (wcar)]
     [clj-time.core :as time-core]
     [clj-time.coerce :as time-coerce]
     [clojure.string :as string]
+    [clojure.set :as cset]
     [clojure.data :as data]))
 
 ; Database initialization
@@ -30,12 +32,11 @@
     tag-list-key (tags-for-post-key post-id)
     tags (try (wcar* (car/lrange tag-list-key 0 -1)) (catch Exception e nil))]
     (when raw-map
-      (assoc (cbutil/map-function-on-map-keys raw-map keyword) :tags tags))))
+      (assoc (cbutil/map-function-on-map-keys raw-map keyword) :post-tags (reverse tags)))))
 
 (defn get-posts [start num-posts]
   "Get a number of blog posts from redis, with a start index and a count. If either the start index or count are
-  invalid, returns nil. Returns a tuple, the first element is a list of IDs and the second element is a list of
-  post-map objects."
+  invalid, returns nil. Returns a 2-tuple consisting of a list of post-data maps and a metadata map."
   (let [
     post-count (try (wcar* (car/llen :post-list)) (catch Exception e 0))
     adj-num-posts (min num-posts (- post-count start))
@@ -125,14 +126,17 @@
 (defn- set-tags-for-post! [post-id tags prev-tags]
   "Given a post and a number of tags, register the tags for the post."
   (let [
-    [added removed _] (data/diff tags prev-tags)
+    tags-set (set (cbtags/remove-empty tags))
+    prev-tags-set (set (cbtags/remove-empty prev-tags))
+    added (sort (into [] (cset/difference tags-set prev-tags-set)))
+    removed (sort (into [] (cset/difference prev-tags-set tags-set)))
     list-key (tags-for-post-key post-id)]
     (try 
       ; Update the post's tag list by adding new tags and removing old ones
-      (map #(wcar* (car/lpush list-key %)) added)
-      (map #(wcar* (car/lrem list-key 0 %)) removed)
-      (map #(let [k (posts-for-tag-key %)] (wcar* (car/lpush k post-id))) added)
-      (map #(let [k (posts-for-tag-key %)] (wcar* (car/lrem k 0 post-id))) removed)
+      (doall (map #(wcar* (car/lpush list-key %)) added))
+      (doall (map #(wcar* (car/lrem list-key 0 %)) removed))
+      (doall (map #(let [k (posts-for-tag-key %)] (wcar* (car/lpush k post-id))) added))
+      (doall (map #(let [k (posts-for-tag-key %)] (wcar* (car/lrem k 0 post-id))) removed))
       true
       (catch Exception e false))))
 

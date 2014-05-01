@@ -138,11 +138,13 @@
       (cbblog/post-npsubmit! session params)
       (response-403 session flash)))
 
+  ;; Resources, must go before the catchall.
+  (route/resources "/")
+
   ;; Catchall
   (GET "/*" {session :session, flash :flash} 
     (response-404 session flash))
 
-  (route/resources "/")
   (route/not-found "???"))
 
 (def app

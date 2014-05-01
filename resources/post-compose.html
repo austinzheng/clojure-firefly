@@ -11,8 +11,10 @@
     <div class="input">
       <form action="/admin/submit/post" method="post">
         <input id="post-id" type="hidden" name="post-id" />
-        Title: <input id="post-title" type="text" name="post-title" placeholder="Enter a title here" />
+        <input id="post-old-tags" type="hidden" name="post-old-tags" />
+        Title: <input id="post-title" type="text"size="60" name="post-title" placeholder="Enter a title here" />
         <div><textarea id="post-content" name="post-content" cols="120" rows="30" placeholder="Enter blog post here (HTML is fine)"></textarea></div>
+        Tags: <input id="post-tags" type="text" size="80" name="post-tags" placeholder="Enter tags, comma-separated" />
         <div>
           <span><button name="preview" type="submit">Preview</button></span>
           <span><button id="action-submit" name="unassigned" type="submit">Submit</button></span>

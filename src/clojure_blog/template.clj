@@ -3,6 +3,7 @@
     [clojure-blog.util :as cbutil]
     [clojure-blog.routes :as cbroutes]
     [clojure-blog.settings :as cbsettings]
+    [clojure-blog.tags :as cbtags]
     [net.cgrand.enlive-html :as html]
     [clj-time.core :as time-core]
     [clj-time.local :as time-local]
@@ -21,8 +22,11 @@
     show-delete (not (nil? post-id))
     c-post-map (if post-map post-map {})
     title (:post-title c-post-map "")
-    content (:post-content c-post-map "")]
-    (post-compose session-info-map flash-msg post-id show-delete title content)))
+    content (:post-content c-post-map "")
+    tags-list (:post-tags c-post-map nil)
+    tags (if tags-list (cbtags/join-tags tags-list) "")]
+    (println (reduce str ["STUPID DEBUG: tags is now " tags]))
+    (post-compose session-info-map flash-msg post-id show-delete title content tags tags)))
 
 (defn- format-date [raw-date]
   "Given a raw date string (long as string), turn it into a formatted date-time string"
@@ -178,12 +182,14 @@
 
 ;; Template for the blog post composer page
 (html/deftemplate post-compose "post-compose.html"
-  [session-info-map flash-msg post-id show-delete title content]
+  [session-info-map flash-msg post-id show-delete title content raw-tags raw-old-tags]
   [:title] (html/content ["Composer - " cbsettings/blog-title])
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:input#post-title] (html/set-attr :value title)
   [:input#post-id] (when post-id (html/set-attr :value post-id))
+  [:input#post-old-tags] (if (> (count raw-tags) 0) (html/set-attr :value raw-old-tags) nil)
+  [:input#post-tags] (html/set-attr :value raw-tags)
   [:textarea#post-content] (html/content content)
   [:button#action-submit] (html/set-attr :name (if post-id "edit-post" "add-post"))
   [:span#delete-button] (when show-delete (html/html-content "<button name=\"delete\" type=\"submit\">Delete</button>"))
@@ -191,11 +197,13 @@
 
 ;; Template for the blog post preview page
 (html/deftemplate post-preview "post-preview.html"
-  [session-info-map flash-msg can-submit post-id title content]
+  [session-info-map flash-msg can-submit post-id title content tags old-tags]
   [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:div.post] (html/html-content (reduce str (html/emit* (post-preview-snippet title content))))
   [:input#post-id] (when post-id (html/set-attr :value post-id))
   [:input#post-title] (html/set-attr :value title)
   [:input#post-content] (html/set-attr :value content)
+  [:input#post-tags] (html/set-attr :value tags)
+  [:input#post-old-tags] (html/set-attr :value old-tags)
   [:button#action-submit] (when can-submit (html/set-attr :name (if post-id "edit-post" "add-post"))))

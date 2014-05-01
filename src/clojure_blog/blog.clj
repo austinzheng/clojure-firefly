@@ -1,5 +1,6 @@
 (ns clojure-blog.blog
   (:require
+    [clojure-blog.tags :as cbtags]
     [clojure-blog.session :as cbsession]
     [clojure-blog.database :as cbdb]
     [clojure-blog.template :as cbtemplate]
@@ -38,8 +39,10 @@
     return-url (:return-url session "/")
     post-title (:post-title params "")
     post-content (:post-content params "")
+    raw-post-tags (:post-tags params nil)
+    post-tags (when raw-post-tags (cbtags/split-raw-tags raw-post-tags))
     can-create (and (cbutil/nonempty? post-title) (cbutil/nonempty? post-content))
-    post-id (when can-create (cbdb/add-post! post-title post-content nil)) ; TODO
+    post-id (when can-create (cbdb/add-post! post-title post-content post-tags))
     flash-msg (if post-id "Post created." "Couldn't create post!")]
     (cbsession/redirect session flash-msg return-url)))
 
@@ -49,11 +52,15 @@
     new-title (:post-title params nil)
     new-content (:post-content params nil)
     post-id (:post-id params nil)
+    raw-old-tags (:post-old-tags params nil)
+    raw-new-tags (:post-tags params nil)
+    old-tags (when raw-old-tags (cbtags/split-raw-tags raw-old-tags))
+    new-tags (when raw-new-tags (cbtags/split-raw-tags raw-new-tags))
     can-edit (and 
       (cbutil/nonempty? new-title) 
-      (cbutil/nonempty? new-content) 
+      (cbutil/nonempty? new-content)
       (cbutil/nonempty? post-id))
-    success (when can-edit (cbdb/edit-post! post-id new-title new-content nil nil)) ; TODO
+    success (when can-edit (cbdb/edit-post! post-id new-title new-content new-tags old-tags))
     flash-msg (if success "Post edited." "Couldn't edit post!")]
     (cbsession/redirect session flash-msg (:return-url session "/"))))
 
@@ -63,8 +70,10 @@
     title (:post-title params)
     content (:post-content params nil)
     post-id (:post-id params nil)
+    tags (:post-tags params nil)
+    old-tags (:post-old-tags params nil)
     can-submit (and (cbutil/nonempty? title) (cbutil/nonempty? content))
-    response-body (cbtemplate/post-preview session-info nil can-submit post-id title content)]
+    response-body (cbtemplate/post-preview session-info nil can-submit post-id title content tags old-tags)]
     {
       :body response-body
       :session session
@@ -77,7 +86,9 @@
     show-delete (not (nil? post-id))
     title (:post-title params)
     content (:post-content params)
-    response-body (cbtemplate/post-compose session-info nil post-id show-delete title content)]
+    tags (:post-tags params nil)
+    old-tags (:post-old-tags params nil)
+    response-body (cbtemplate/post-compose session-info nil post-id show-delete title content tags old-tags)]
     {
       :body response-body
       :session session  
@@ -111,7 +122,7 @@
 
 ;; 'format-' functions generate HTML for a given blog page.
 
-(defn format-composer-edit [session-info flash-msg post-id post-map] 
+(defn format-composer-edit [session-info flash-msg post-id post-map]
   (reduce str (cbtemplate/build-composer session-info flash-msg post-id post-map)))
 
 (defn format-composer-new [session-info flash-msg]
