@@ -58,13 +58,15 @@
       formatted-tags)]
     (reduce str (html/emit* snippet))))
 
-(defn- invoke-archive-snippet [metadata-map]
+(defn- invoke-archive-snippet [session-info-map metadata-map]
   "Generate the HTML for a single archive item"
   (let [
     {post-id :post-id title :post-title date :post-date} metadata-map
     formatted-date (format-date date)
     url (when post-id (cbroutes/blog-post-route post-id))
-    snippet (archive-snippet title formatted-date url)]
+    logged-in (:logged-in session-info-map false)
+    edit-post-route (when logged-in (cbroutes/edit-post-route post-id))
+    snippet (archive-snippet logged-in edit-post-route title formatted-date url)]
     (reduce str (html/emit* snippet))))
 
 (defn- invoke-header-snippet [session-info-map]
@@ -107,6 +109,10 @@
   [title subtitle main-route]
   [:a#title] (html/content title)
   [:a#title] (html/set-attr :href main-route)
+  [:a#sect-home] (html/set-attr :href cbroutes/main-route)
+  [:a#sect-archive] (html/set-attr :href cbroutes/blog-archive-route)
+  ; [:a#sect-links] (html/set-attr :href cbroutes/links-route)
+  ; [:a#sect-about] (html/set-attr :href cbroutes/about-route)
   [:p.subtitle] (html/content subtitle))
 
 ;; Snippet for the footer
@@ -151,7 +157,6 @@
   [:a#title-link] (when-not is-single (html/set-attr :href (cbroutes/blog-post-route post-id)))
   [:span.if-logged-in] (only-if is-logged-in)
   [:a#edit-post] (when is-logged-in (html/set-attr :href (cbroutes/edit-post-route post-id)))
-  [:a#delete-post] (when is-logged-in (html/set-attr :href (cbroutes/delete-post-route post-id)))
   [:span#edit-note] (when is-edited (html/content (if edit-date ["Last edited: " edit-date] "Edited")))
   [:span.if-edited] (only-if is-edited)
   [:span#date] (html/content (apply str ["Date: " date]))
@@ -167,7 +172,6 @@
   [:a#title-link] nil
   [:span.if-logged-in] nil
   [:a#edit-post] nil
-  [:a#delete-post] nil
   [:span#edit-note] nil
   [:span.if-edited] nil
   [:span#date] (html/content "(Preview Mode)")
@@ -177,10 +181,12 @@
 ;; Snippet for an archive entry
 (html/defsnippet archive-snippet "archive-snippet.html"
   [:div.archive-item]
-  [title date url]
+  [is-logged-in edit-post-route title date url]
   [:a#item-url] (html/content title)
   [:a#item-url] (html/set-attr :href url)
-  [:span#item-date] (html/content date))
+  [:span#item-date] (html/content date)
+  [:span.if-logged-in] (only-if is-logged-in)
+  [:a#edit-post] (when edit-post-route (html/set-attr :href edit-post-route)))
 
 ;; Template for the single-post page
 (html/deftemplate post-page "post.html"
@@ -214,7 +220,7 @@
   [:div#no-posts] (when (= (count metadata-list) 0) (html/content no-posts-msg))
   [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
-  [:div.archive] (when (> (count metadata-list) 0) (html/html-content (reduce str (map #(invoke-archive-snippet %) metadata-list))))
+  [:div.archive] (when (> (count metadata-list) 0) (html/html-content (reduce str (map #(invoke-archive-snippet session-info-map %) metadata-list))))
   [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
 
 ;; Template for the blog post composer page
