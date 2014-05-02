@@ -61,8 +61,11 @@
   (GET "/blog/archive/" {session :session, flash :flash} (cbsession/redirect session flash "/blog/archive"))
   (GET "/blog/archive" 
     {session :session, params :params, flash :flash, uri :uri}
-    ; TODO
-    "hullo")
+    (let [session-info (cbauth/make-session-info session)]
+      {
+        :body (cbblog/get-archive session-info flash)
+        :session (cbsession/session-with-return-url session uri)
+      }))
 
   (GET ["/blog/:start/:count/" :start #"[0-9]+" :count #"[0-9]+"] {session :session, flash :flash, params :params}
     (cbsession/redirect session flash (apply str ["/blog/" (:start params) "/" (:count params)])))

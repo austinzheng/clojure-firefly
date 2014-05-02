@@ -17,7 +17,7 @@
 (declare tags-for-post-key)
 (declare set-tags-for-post!)
 
-; Posts API
+;; POSTS API
 (defn- post-base-key [post-id] 
   (apply str ["post:" post-id]))
 
@@ -119,6 +119,23 @@
           (do (wcar* (car/exec)) (wcar* (car/bgsave)) true) 
           (catch Exception e false)))
       false)))
+
+;; POSTS API (metadata)
+(defn get-post-metadata [post-id]
+  "Get a blog post's creation date and title, based on the post ID"
+  (let [
+    post-key (post-base-key post-id)
+    [post-title post-date] (wcar* (car/hget post-key :post-title) (car/hget post-key :post-date))]
+    {:post-id post-id, :post-title post-title, :post-date post-date}))
+
+(defn get-metadata-for-ids [post-ids]
+  "Get metadata for a vector of post ID values."
+  (doall (map #(get-post-metadata %) post-ids)))
+
+(defn get-all-metadata []
+  "Get metadata for all posts"
+  (let [all-ids (try (wcar* (car/lrange :post-list 0 -1)) (catch Exception e nil))]
+    (when all-ids (get-metadata-for-ids all-ids))))
 
 
 ; Image-related API

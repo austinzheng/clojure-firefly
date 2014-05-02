@@ -20,7 +20,9 @@ To start a web server for the application, run:
 
 - Integration with redis
 - View either a single blog post or any range of posts
+- View a compact list of all posts ('archive')
 - Create, edit, preview, and delete blog posts
+- Add tags to blog posts; users can see all posts for a tag
 - Log in as administrator to manage blog
 
 ## To Be Done
@@ -33,11 +35,9 @@ To start a web server for the application, run:
 ### Features
 
 - Less eye-bleedingly ugly CSS and HTML
-- Blog archive page (list of all blog entries by title)
 - Saving draft posts
 - About page
 - Curated links feature
-- Tags for blog posts and links
 - Smart image support (support for uploading and deleting images in blog post editor, thumbnail previews)
 - Possible comment support (or use a third-party solution)
 

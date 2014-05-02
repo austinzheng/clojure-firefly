@@ -149,6 +149,10 @@
     desc (tag-description tag)]
     (reduce str (cbtemplate/blog-page session-info flash-msg post-id-list post-map-list nil nil desc nil nil))))
 
+(defn format-archive [session-info flash-msg metadata-list]
+  "Given raw data from the database, generate the HTML for the posts archive page"
+  (reduce str (cbtemplate/archive-page session-info flash-msg metadata-list "(No posts)")))
+
 
 ;; 'get-' functions provide an interface for getting the :body of a response to a GET request.
 
@@ -185,4 +189,13 @@
     error-msg (reduce str ["Could not retrieve posts for the tag '" tag "'"])]
     (if post-map-list
       (format-blog-for-tag session-info flash-msg id-seq post-map-list tag)
+      (cbtemplate/error-page session-info flash-msg error-msg nil nil))))
+
+(defn get-archive [session-info flash-msg]
+  "Return the post archive."
+  (let [
+    metadata-list (cbdb/get-all-metadata)
+    error-msg "Could not retrieve blog archive"]
+    (if metadata-list
+      (format-archive session-info flash-msg metadata-list)
       (cbtemplate/error-page session-info flash-msg error-msg nil nil))))

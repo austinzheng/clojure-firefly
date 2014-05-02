@@ -11,9 +11,10 @@
     [clj-time.format :as time-format]
     [clj-time.coerce :as time-coerce]))
 
-(declare post-snippet)
 (declare header-snippet)
 (declare footer-snippet)
+(declare post-snippet)
+(declare archive-snippet)
 
 (declare post-compose)
 
@@ -44,8 +45,8 @@
     formatted-date (format-date date)
     formatted-edit-date (format-date edit-date)
     tags (:post-tags post-map nil)
-    formatted-tags (cbtags/tags-html-for-tags tags)]
-    (post-snippet 
+    formatted-tags (cbtags/tags-html-for-tags tags)
+    snippet (post-snippet 
       is-single 
       (:logged-in session-info-map false)
       post-id
@@ -54,23 +55,37 @@
       content 
       is-edited
       formatted-edit-date
-      formatted-tags)))
+      formatted-tags)]
+    (reduce str (html/emit* snippet))))
+
+(defn- invoke-archive-snippet [metadata-map]
+  "Generate the HTML for a single archive item"
+  (let [
+    {post-id :post-id title :post-title date :post-date} metadata-map
+    formatted-date (format-date date)
+    url (when post-id (cbroutes/blog-post-route post-id))
+    snippet (archive-snippet title formatted-date url)]
+    (reduce str (html/emit* snippet))))
 
 (defn- invoke-header-snippet [session-info-map]
   "Generate the HTML for the blog header"
-  (header-snippet
-    cbsettings/blog-title
-    cbsettings/blog-subtitle
-    cbroutes/main-route))
+  (reduce str 
+    (html/emit*
+     (header-snippet 
+      cbsettings/blog-title
+       cbsettings/blog-subtitle
+        cbroutes/main-route))))
 
 (defn- invoke-footer-snippet [session-info-map]
   "Generate the HTML for the blog footer"
-  (footer-snippet
-    (:logged-in session-info-map false)
-    (:username session-info-map)
-    cbroutes/login-route
-    cbroutes/logout-route
-    cbroutes/new-post-route))
+  (reduce str 
+    (html/emit* 
+      (footer-snippet
+        (:logged-in session-info-map false)
+        (:username session-info-map)
+        cbroutes/login-route
+        cbroutes/logout-route
+        cbroutes/new-post-route))))
 
 
 ;; ENLIVE UTILITY
@@ -116,12 +131,12 @@
 (html/deftemplate error-page "error.html"
   [session-info-map flash-msg error-msg back-link back-msg]
   [:title] (html/content "Error")
-  [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:span.message] (html/content (if error-msg error-msg "Sorry, an error seems to have occurred."))
   [:a#goback] (when back-link (html/set-attr :href back-link))
   [:a#goback] (when back-link (html/content (if back-msg back-msg "Back")))
-  [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
+  [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
 
 
 ;;; BLOG-SPECIFIC
@@ -156,24 +171,33 @@
   [:span#edit-note] nil
   [:span.if-edited] nil
   [:span#date] (html/content "(Preview Mode)")
+  [:span#tags-list] nil
   [:div.content] (html/html-content content))
+
+;; Snippet for an archive entry
+(html/defsnippet archive-snippet "archive-snippet.html"
+  [:div.archive-item]
+  [title date url]
+  [:a#item-url] (html/content title)
+  [:a#item-url] (html/set-attr :href url)
+  [:span#item-date] (html/content date))
 
 ;; Template for the single-post page
 (html/deftemplate post-page "post.html"
   [session-info-map flash-msg post-id post-map]
   [:title] (html/content [(:post-title post-map "Post") " - " cbsettings/blog-title])
-  [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
-  [:div.post] (html/html-content (reduce str (html/emit* (invoke-post-snippet session-info-map true post-id post-map))))
-  [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
+  [:div.post] (html/html-content (invoke-post-snippet session-info-map true post-id post-map))
+  [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
 
 ;; Template for the multiple-post blog page
 (html/deftemplate blog-page "blog.html"
   [session-info-map flash-msg post-id-list post-map-list prev-url prev-description current-nav-description next-url next-description]
   [:title] (html/content cbsettings/blog-title)
-  [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
-  [:div.posts] (html/html-content (reduce str (map #(reduce str (html/emit* (invoke-post-snippet session-info-map false %1 %2))) post-id-list post-map-list)))
+  [:div.posts] (html/html-content (reduce str (map #(invoke-post-snippet session-info-map false %1 %2) post-id-list post-map-list)))
   [:a#blog-prev-link] (html/set-attr :href prev-url)
   [:a#blog-prev-link] (html/content prev-description)
   [:span.has-prev] (only-if prev-url)
@@ -181,13 +205,23 @@
   [:a#blog-next-link] (html/content next-description)
   [:span.has-next] (only-if next-url)
   [:span#blog-current] (html/content (if current-nav-description current-nav-description "-"))
-  [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
+  [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
+
+;; Template for the archive page
+(html/deftemplate archive-page "archive.html"
+  [session-info-map flash-msg metadata-list no-posts-msg]
+  [:title] (html/content (reduce str ["Archives - " cbsettings/blog-title]))
+  [:div#no-posts] (when (= (count metadata-list) 0) (html/content no-posts-msg))
+  [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
+  [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
+  [:div.archive] (when (> (count metadata-list) 0) (html/html-content (reduce str (map #(invoke-archive-snippet %) metadata-list))))
+  [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
 
 ;; Template for the blog post composer page
 (html/deftemplate post-compose "post-compose.html"
   [session-info-map flash-msg post-id show-delete title content raw-tags raw-old-tags]
   [:title] (html/content ["Composer - " cbsettings/blog-title])
-  [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:input#post-title] (html/set-attr :value title)
   [:input#post-id] (when post-id (html/set-attr :value post-id))
@@ -196,12 +230,12 @@
   [:textarea#post-content] (html/content content)
   [:button#action-submit] (html/set-attr :name (if post-id "edit-post" "add-post"))
   [:span#delete-button] (when show-delete (html/html-content "<button name=\"delete\" type=\"submit\">Delete</button>"))
-  [:div.footer] (html/html-content (reduce str (html/emit* (invoke-footer-snippet session-info-map)))))
+  [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
 
 ;; Template for the blog post preview page
 (html/deftemplate post-preview "post-preview.html"
   [session-info-map flash-msg can-submit post-id title content tags old-tags]
-  [:div.nav] (html/html-content (reduce str (html/emit* (invoke-header-snippet session-info-map))))
+  [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:div.post] (html/html-content (reduce str (html/emit* (post-preview-snippet title content))))
   [:input#post-id] (when post-id (html/set-attr :value post-id))
