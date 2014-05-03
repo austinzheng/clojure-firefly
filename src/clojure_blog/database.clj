@@ -1,7 +1,7 @@
 (ns clojure-blog.database
   (:require 
-    [clojure-blog.tags :as cbtags]
-    [clojure-blog.util :as cbutil]
+    [clojure-blog.tags :as tags]
+    [clojure-blog.util :as util]
     [taoensso.carmine :as car :refer (wcar)]
     [clj-time.core :as time-core]
     [clj-time.coerce :as time-coerce]
@@ -66,7 +66,7 @@
     tag-list-key (tags-for-post-key post-id)
     tags (op-get-or-nil* (wcar* (car/lrange tag-list-key 0 -1)))]
     (when raw-map
-      (assoc (cbutil/map-function-on-map-keys raw-map keyword) :post-tags (reverse tags)))))
+      (assoc (util/map-function-on-map-keys raw-map keyword) :post-tags (reverse tags)))))
 
 (defn get-posts [start num-posts]
   "Get a number of blog posts from redis, with a start index and a count. If either the start index or count are
@@ -107,7 +107,7 @@
       (car/hset hash-key :post-edited false)
       (car/hset hash-key :post-edit-date nil))
     ; Add the keys
-    (when tags (set-tags-for-post! (cbutil/parse-integer post-id) tags ()))
+    (when tags (set-tags-for-post! (util/parse-integer post-id) tags ()))
     (try 
       (do (wcar* (car/exec)) (wcar* (car/bgsave)) post-id) 
       (catch Exception e 
@@ -132,7 +132,7 @@
           (car/hset hash-key :post-content post-content)
           (car/hset hash-key :post-edited true)
           (car/hset hash-key :post-edit-date edit-date))
-        (set-tags-for-post! (cbutil/parse-integer post-id) tags prev-tags)
+        (set-tags-for-post! (util/parse-integer post-id) tags prev-tags)
         (try 
           (do (wcar* (car/exec)) (wcar* (car/bgsave)) true) 
           (catch Exception e false)))
@@ -151,7 +151,7 @@
           (car/multi)
           (car/lrem :post-list 0 post-id)
           (car/del (post-base-key post-id)))
-        (set-tags-for-post! (cbutil/parse-integer post-id) () tags)
+        (set-tags-for-post! (util/parse-integer post-id) () tags)
         (try 
           (do (wcar* (car/exec)) (wcar* (car/bgsave)) true) 
           (catch Exception e false)))
@@ -188,8 +188,8 @@
 (defn- set-tags-for-post! [post-id tags prev-tags]
   "Given a post and a number of tags, register the tags for the post."
   (let [
-    tags-set (set (cbtags/remove-empty tags))
-    prev-tags-set (set (cbtags/remove-empty prev-tags))
+    tags-set (set (tags/remove-empty tags))
+    prev-tags-set (set (tags/remove-empty prev-tags))
     added (sort (into [] (cset/difference tags-set prev-tags-set)))
     removed (sort (into [] (cset/difference prev-tags-set tags-set)))
     list-key (tags-for-post-key post-id)]
@@ -204,7 +204,7 @@
 
 (defn- post-ids-for-tag [tag-name]
   (let [
-    valid (cbtags/tag-valid? tag-name)
+    valid (tags/tag-valid? tag-name)
     k (when valid (posts-for-tag-key tag-name))]
     (when k (op-get-or-nil* (wcar* (car/lrange k 0 -1))))))
 

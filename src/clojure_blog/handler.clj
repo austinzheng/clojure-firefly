@@ -1,10 +1,10 @@
 (ns clojure-blog.handler
   (:use compojure.core)
   (:require 
-    [clojure-blog.blog :as cbblog]
-    [clojure-blog.session :as cbsession]
-    [clojure-blog.auth :as cbauth]
-    [clojure-blog.template :as cbtemplate]
+    [clojure-blog.blog :as blog]
+    [clojure-blog.session :as ss]
+    [clojure-blog.auth :as auth]
+    [clojure-blog.template :as template]
     [clojure-blog.routes :as r]
     [compojure.handler :as handler]
     [compojure.route :as route]
@@ -16,37 +16,37 @@
   [session flash & {:keys [message back-link back-msg]}]
   (let [
     flash-msg flash
-    session-info (cbauth/make-session-info session)
+    session-info (auth/make-session-info session)
     error-msg (if message message "You must first log in.")]
     {
       :status 403
       :session session
-      :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)
+      :body (template/error-page session-info flash-msg error-msg back-link back-msg)
     }))
 
 (defn- response-404 
   [session flash & {:keys [back-link back-msg]}]
   (let [
     flash-msg flash
-    session-info (cbauth/make-session-info session)
+    session-info (auth/make-session-info session)
     error-msg "404: The requested resource couldn't be found."]
     {
       :status 404
       :session session
-      :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)
+      :body (template/error-page session-info flash-msg error-msg back-link back-msg)
     }))
 
 (defn- admin-page
   [session flash]
   (let [
     flash-msg flash
-    session-info (cbauth/make-session-info session)
-    is-first-time (cbauth/first-time?)
-    authorized (or is-first-time (cbauth/admin? session))]
+    session-info (auth/make-session-info session)
+    is-first-time (auth/first-time?)
+    authorized (or is-first-time (auth/admin? session))]
     (if authorized
       {
         :session session
-        :body (cbtemplate/admin-page session-info flash-msg is-first-time)
+        :body (template/admin-page session-info flash-msg is-first-time)
       }
       (response-403 session flash :message "You must first log in to view the control panel."))))
 
@@ -56,57 +56,57 @@
 
   (GET "/" 
     {session :session, flash :flash}
-    (cbsession/redirect 
-      (cbsession/session-with-return-url session r/home-route) 
+    (ss/redirect 
+      (ss/session-with-return-url session r/home-route) 
       flash
       r/home-route))
 
   ;; BLOG
-  (GET "/blog/" {session :session, flash :flash} (cbsession/redirect session flash "/blog"))
+  (GET "/blog/" {session :session, flash :flash} (ss/redirect session flash "/blog"))
   (GET "/blog"
     {session :session, flash :flash}
-    (cbsession/redirect 
-      (cbsession/session-with-return-url session r/home-route) 
+    (ss/redirect 
+      (ss/session-with-return-url session r/home-route) 
       flash 
       r/home-route))
 
-  (GET "/blog/archive/" {session :session, flash :flash} (cbsession/redirect session flash "/blog/archive"))
+  (GET "/blog/archive/" {session :session, flash :flash} (ss/redirect session flash "/blog/archive"))
   (GET "/blog/archive" 
     {session :session, params :params, flash :flash, uri :uri}
-    (let [session-info (cbauth/make-session-info session)]
+    (let [session-info (auth/make-session-info session)]
       {
-        :body (cbblog/get-archive session-info flash)
-        :session (cbsession/session-with-return-url session uri)
+        :body (blog/get-archive session-info flash)
+        :session (ss/session-with-return-url session uri)
       }))
 
   (GET ["/blog/:start/:count/" :start #"[0-9]+" :count #"[0-9]+"] {session :session, flash :flash, params :params}
-    (cbsession/redirect session flash (apply str ["/blog/" (:start params) "/" (:count params)])))
+    (ss/redirect session flash (apply str ["/blog/" (:start params) "/" (:count params)])))
   (GET ["/blog/:start/:count" :start #"[0-9]+" :count #"[0-9]+"]
     {session :session, params :params, flash :flash, uri :uri}
-    (let [session-info (cbauth/make-session-info session)]
+    (let [session-info (auth/make-session-info session)]
       {
-        :body (cbblog/get-posts session-info flash (:start params 0) (:count params 10))
-        :session (cbsession/session-with-return-url session uri)
+        :body (blog/get-posts session-info flash (:start params 0) (:count params 10))
+        :session (ss/session-with-return-url session uri)
       }))
 
   (GET ["/post/:id/" :id #"[0-9]+"] {session :session, flash :flash, params :params}
-    (cbsession/redirect session flash (apply str ["/post/" (:id params)])))
+    (ss/redirect session flash (apply str ["/post/" (:id params)])))
   (GET ["/post/:id" :id #"[0-9]+"]
     {session :session, params :params, flash :flash, uri :uri}
-    (let [session-info (cbauth/make-session-info session)]
+    (let [session-info (auth/make-session-info session)]
       {
-        :body (cbblog/get-post session-info flash (:id params nil))
-        :session (cbsession/session-with-return-url session uri)
+        :body (blog/get-post session-info flash (:id params nil))
+        :session (ss/session-with-return-url session uri)
       }))
 
   (GET "/posts/tag/:tag/" {session :session, flash :flash, params :params}
-    (cbsession/redirect session flash (apply str ["/post/tag/" (:tag params)])))
+    (ss/redirect session flash (apply str ["/post/tag/" (:tag params)])))
   (GET "/posts/tag/:tag"
     {session :session, params :params, flash :flash, uri :uri}
-    (let [session-info (cbauth/make-session-info session)] 
+    (let [session-info (auth/make-session-info session)] 
       {
-        :body (cbblog/get-posts-for-tag session-info flash (:tag params))
-        :session (cbsession/session-with-return-url session uri)
+        :body (blog/get-posts-for-tag session-info flash (:tag params))
+        :session (ss/session-with-return-url session uri)
       }))
 
   ;; ADMIN (GENERAL)
@@ -116,25 +116,25 @@
 
   (POST "/admin/first-time"
     {session :session, params :params, flash :flash, uri :uri}
-    (cbauth/post-first-time session params))
+    (auth/post-first-time session params))
 
   (POST "/admin/login"
     {session :session, params :params, flash :flash, uri :uri}
-    (cbauth/post-login session params))
+    (auth/post-login session params))
 
   (GET "/admin/logout" 
     {session :session, params :params, flash :flash, uri :uri}
-    (cbauth/post-logout session params))
+    (auth/post-logout session params))
 
   ;; ADMIN (BLOG)
   (GET ["/admin/edit/post/:id" :id #"[0-9]+"]
     {session :session, params :params, flash :flash, uri :uri}
     (let [
-      session-info (cbauth/make-session-info session)
-      authorized (cbauth/admin? session)]
+      session-info (auth/make-session-info session)
+      authorized (auth/admin? session)]
       (if authorized
         {
-          :body (cbblog/get-post-composer session-info flash (:id params nil))
+          :body (blog/get-post-composer session-info flash (:id params nil))
           :session session
         }
         (response-403 
@@ -145,11 +145,11 @@
   (GET "/admin/new/post" 
     {session :session, params :params, flash :flash, uri :uri}
     (let [
-      session-info (cbauth/make-session-info session)
-      authorized (cbauth/admin? session)]
+      session-info (auth/make-session-info session)
+      authorized (auth/admin? session)]
       (if authorized
         {
-          :body (cbblog/get-post-composer session-info flash nil)
+          :body (blog/get-post-composer session-info flash nil)
           :session session
         }
         (response-403
@@ -159,8 +159,8 @@
 
   (GET ["/admin/delete/post/:id" :id #"[0-9]+"]
     {session :session, params :params, flash :flash, uri :uri} 
-    (if (cbauth/admin? session)
-      (cbblog/post-delete! session params)
+    (if (auth/admin? session)
+      (blog/post-delete! session params)
       (response-403 
         session 
         flash 
@@ -168,8 +168,8 @@
 
   (POST "/admin/submit/post"
     {session :session, params :params, flash :flash, uri :uri}
-    (if (cbauth/admin? session) 
-      (cbblog/post-npsubmit! session params)
+    (if (auth/admin? session) 
+      (blog/post-npsubmit! session params)
       (response-403 session flash)))
 
   ;; Resources, must go before the catchall.

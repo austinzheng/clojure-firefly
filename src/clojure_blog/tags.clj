@@ -1,6 +1,6 @@
 (ns clojure-blog.tags
   (:require 
-    [clojure-blog.routes :as cbroutes]
+    [clojure-blog.routes :as r]
     [clojure.string :as s]
     [ring.util.codec :as codec]))
 
@@ -30,6 +30,6 @@
     (let [
       preceding-tags (butlast tags-list)
       last-tag (last tags-list)
-      formatted-preceding (reduce str (map #(reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route (codec/url-encode %)) "\">" % "</a>, "]) preceding-tags))
-      formatted-last (reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route (codec/url-encode last-tag)) "\">" last-tag "</a>"])]
+      formatted-preceding (reduce str (map #(reduce str ["<a href=\"" (r/blog-posts-for-tag-route (codec/url-encode %)) "\">" % "</a>, "]) preceding-tags))
+      formatted-last (reduce str ["<a href=\"" (r/blog-posts-for-tag-route (codec/url-encode last-tag)) "\">" last-tag "</a>"])]
       (reduce str ["Tags: " formatted-preceding formatted-last]))))
