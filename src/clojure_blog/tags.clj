@@ -31,5 +31,5 @@
       preceding-tags (butlast tags-list)
       last-tag (last tags-list)
       formatted-preceding (reduce str (map #(reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route (codec/url-encode %)) "\">" % "</a>, "]) preceding-tags))
-      formatted-last (reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route last-tag) "\">" last-tag "</a>"])]
+      formatted-last (reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route (codec/url-encode last-tag)) "\">" last-tag "</a>"])]
       (reduce str ["Tags: " formatted-preceding formatted-last]))))
