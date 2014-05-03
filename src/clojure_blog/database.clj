@@ -110,7 +110,10 @@
     (when tags (set-tags-for-post! (cbutil/parse-integer post-id) tags ()))
     (try 
       (do (wcar* (car/exec)) (wcar* (car/bgsave)) post-id) 
-      (catch Exception e nil))))
+      (catch Exception e 
+        (do 
+          (println (reduce str ["Received an exception when adding a post. Message: " (.getMessage e)]))
+          nil)))))
 
 (defn edit-post! [post-id post-title post-content tags prev-tags]
   "Replaces the contents of post post-id with post-content, and the names as well. Returns true if successful, false

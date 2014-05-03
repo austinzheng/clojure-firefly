@@ -1,7 +1,10 @@
-(ns clojure-blog.routes)
+(ns clojure-blog.routes
+   (:require
+    [clojure-blog.settings :as settings]))
 
 ;; Shared routes
 (def main-route "/")
+(def home-route (apply str ["/blog/0/" settings/posts-per-page]))
 (def about-route "/about")
 
 ;; Blog routes

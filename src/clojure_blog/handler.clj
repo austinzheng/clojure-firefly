@@ -5,14 +5,11 @@
     [clojure-blog.session :as cbsession]
     [clojure-blog.auth :as cbauth]
     [clojure-blog.template :as cbtemplate]
-    [clojure-blog.settings :as cbsettings]
+    [clojure-blog.routes :as r]
     [compojure.handler :as handler]
     [compojure.route :as route]
     [ring.middleware.session :as session]
     [ring.adapter.jetty :as jetty]))
-
-;; UTILITY GENERATORS
-(def home-route (apply str ["/blog/0/" cbsettings/posts-per-page]))
 
 ;; SHARED PAGES
 (defn- response-403
@@ -60,18 +57,18 @@
   (GET "/" 
     {session :session, flash :flash}
     (cbsession/redirect 
-      (cbsession/session-with-return-url session home-route) 
+      (cbsession/session-with-return-url session r/home-route) 
       flash
-      home-route))
+      r/home-route))
 
   ;; BLOG
   (GET "/blog/" {session :session, flash :flash} (cbsession/redirect session flash "/blog"))
   (GET "/blog"
     {session :session, flash :flash}
     (cbsession/redirect 
-      (cbsession/session-with-return-url session home-route) 
+      (cbsession/session-with-return-url session r/home-route) 
       flash 
-      home-route))
+      r/home-route))
 
   (GET "/blog/archive/" {session :session, flash :flash} (cbsession/redirect session flash "/blog/archive"))
   (GET "/blog/archive" 

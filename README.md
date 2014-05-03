@@ -29,7 +29,9 @@ To start a web server for the application, run:
 
 ### Technical
 
+- Figure out why save "fails" occasionally first time after inactivity (may have to do with "1 changes in 3600 seconds" autosave on Redis' end...)
 - Persistent sessions and better session security
+- Add a system for logging error or warning data to a file
 
 ### Features
 

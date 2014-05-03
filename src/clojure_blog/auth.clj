@@ -1,8 +1,7 @@
 (ns clojure-blog.auth 
   (:require
-    [clojure-blog.session :as cbsession]
-    [clojure-blog.database :as cbdb]
-    [clojure-blog.util :as cbutil]
+    [clojure-blog.session :as ss]
+    [clojure-blog.database :as db]
     [clojurewerkz.scrypt.core :as scrypt]))
 
 (declare admin?)
@@ -23,7 +22,7 @@
 ;; SECURITY
 (defn first-time? []
   ; Here in case we want to do something a bit more robust in the future...
-  (not (cbdb/blog-has-accounts?)))
+  (not (db/blog-has-accounts?)))
 
 (defn- acceptable-username? [username]
   "Returns true if a username meets criteria for being a valid username (e.g. length), false otherwise"
@@ -48,17 +47,17 @@
     username (:username params nil)
     password (:password params nil)
     well-formed (and (acceptable-username? username) (acceptable-password? password))
-    retrieved-hash (when well-formed (cbdb/hash-for-username username))
+    retrieved-hash (when well-formed (db/hash-for-username username))
     ]
-    (if (and well-formed (cbutil/nonempty? retrieved-hash)) 
+    (if (and well-formed (seq retrieved-hash)) 
       (validate-password password retrieved-hash)
       false)))
 
 (defn- add-account [username password]
   "Given a *well-formed* username and password, try to add a new account. Returns true if successful, false otherwise"
   (let [pw-hash (hash-password password)]
-    (if (cbutil/nonempty? pw-hash)
-      (cbdb/add-account username pw-hash)
+    (if (seq pw-hash)
+      (db/add-account username pw-hash)
       false)))
 
 
@@ -68,20 +67,20 @@
     is-valid (credentials-valid? params)
     return-url (:return-url session "/")
     username (:username params nil)
-    session (if is-valid (cbsession/session-added-admin-privileges session username) (cbsession/session-removed-admin-privileges session))
+    session (if is-valid (ss/session-added-admin-privileges session username) (ss/session-removed-admin-privileges session))
     flash-msg (if is-valid "Logged in!" "Invalid credentials.")]
-    (cbsession/redirect session flash-msg return-url)))
+    (ss/redirect session flash-msg return-url)))
 
 (defn post-logout [session params]
   (let [
     flash-msg (if (admin? session) "Logged out." "Already logged out!")
-    session (cbsession/session-removed-admin-privileges session)
+    session (ss/session-removed-admin-privileges session)
     return-url "/"]
-    (cbsession/redirect session flash-msg return-url)))
+    (ss/redirect session flash-msg return-url)))
 
 (defn post-first-time [session params]
   (let [
-    actually-first-time (not (cbdb/blog-has-accounts?))
+    actually-first-time (not (db/blog-has-accounts?))
     username (:new-username params nil)
     password (:new-password params nil)
     well-formed (and (acceptable-username? username) (acceptable-password? password))
@@ -92,4 +91,4 @@
       (not account-added) "Error: couldn't add the new account to the database."
       :else "Success! Added your new administrator account.")
     ]
-    (cbsession/redirect session flash-msg (:return-url session "/"))))
+    (ss/redirect session flash-msg (:return-url session "/"))))
