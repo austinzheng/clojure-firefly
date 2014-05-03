@@ -18,9 +18,12 @@
 (defn session-without-return-url [session url]
   (if session (dissoc session :return-url) {}))
 
-(defn session-added-admin-privileges [session]
-  (let [c-session (if session session {})]
-    (assoc c-session :admin-session "session-active")))
+(defn session-added-admin-privileges [session username]
+  (let [
+    c-session (if session session {})
+    with-admin (assoc c-session :admin-session "session-active")
+    with-username (assoc with-admin :username username)]
+    with-username))
 
 (defn session-removed-admin-privileges [session]
   (if session (dissoc session :admin-session) {}))

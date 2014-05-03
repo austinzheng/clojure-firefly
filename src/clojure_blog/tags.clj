@@ -1,7 +1,8 @@
 (ns clojure-blog.tags
   (:require 
     [clojure-blog.routes :as cbroutes]
-    [clojure.string :as s]))
+    [clojure.string :as s]
+    [ring.util.codec :as codec]))
 
 (defn tag-valid? [tag]
   "Return whether a potential tag value is valid for further operations"
@@ -29,6 +30,6 @@
     (let [
       preceding-tags (butlast tags-list)
       last-tag (last tags-list)
-      formatted-preceding (reduce str (map #(reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route %) "\">" % "</a>, "]) preceding-tags))
+      formatted-preceding (reduce str (map #(reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route (codec/url-encode %)) "\">" % "</a>, "]) preceding-tags))
       formatted-last (reduce str ["<a href=\"" (cbroutes/blog-posts-for-tag-route last-tag) "\">" last-tag "</a>"])]
       (reduce str ["Tags: " formatted-preceding formatted-last]))))

@@ -29,7 +29,6 @@ To start a web server for the application, run:
 
 ### Technical
 
-- Properly implement authentication (right now username/password are hardcoded)
 - Persistent sessions and better session security
 
 ### Features

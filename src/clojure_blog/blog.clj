@@ -138,16 +138,40 @@
 (defn format-blog [session-info flash-msg post-id-list post-map-list start number total]
   "Given raw data from the database, generate the HTML for a page of posts"
   (let [
-    desc (nav-description start number)
-    prev-url (prev-route start number total)
-    next-url (next-route start number total)]
-    (reduce str (cbtemplate/blog-page session-info flash-msg post-id-list post-map-list prev-url "Newer" desc next-url "Older"))))
+    c-total (if (nil? total) 0 total)
+    desc (when (> c-total 0) (nav-description start number))
+    prev-url (when (> c-total 0) (prev-route start number total))
+    next-url (when (> c-total 0) (next-route start number total))
+    no-posts-msg "(No posts)"]
+    (reduce str
+      (cbtemplate/blog-page
+        session-info
+        flash-msg
+        post-id-list
+        post-map-list
+        no-posts-msg
+        prev-url
+        "Newer"
+        desc
+        next-url
+        "Older"))))
 
 (defn format-blog-for-tag [session-info flash-msg post-id-list post-map-list tag]
   "Given raw data from the database, generate the HTML for a page of posts"
   (let [
     desc (tag-description tag)]
-    (reduce str (cbtemplate/blog-page session-info flash-msg post-id-list post-map-list nil nil desc nil nil))))
+    (reduce str 
+      (cbtemplate/blog-page
+        session-info
+        flash-msg
+        post-id-list
+        post-map-list
+        "(No posts)"
+        nil
+        nil
+        desc
+        nil
+        nil))))
 
 (defn format-archive [session-info flash-msg metadata-list]
   "Given raw data from the database, generate the HTML for the posts archive page"
@@ -176,8 +200,10 @@
   (let [
     start (cbutil/parse-integer raw-start)
     n (cbutil/parse-integer raw-number)
-    [post-map-list {:keys [id-seq post-count]}] (when (and start n) (cbdb/get-posts start n))]
-    (if post-map-list
+    no-posts (= 0 (cbdb/total-post-count))
+    [post-map-list {:keys [id-seq raw-count]}] (when (and start n) (cbdb/get-posts start n))
+    post-count (if no-posts 0 raw-count)]
+    (if (or no-posts post-map-list) 
       (format-blog session-info flash-msg id-seq post-map-list start (count post-map-list) post-count)
       (cbtemplate/error-page session-info flash-msg "Could not retrieve the requested posts." nil nil))))
 

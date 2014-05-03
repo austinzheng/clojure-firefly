@@ -14,6 +14,7 @@
 ;; UTILITY GENERATORS
 (def home-route (apply str ["/blog/0/" cbsettings/posts-per-page]))
 
+;; SHARED PAGES
 (defn- response-403
   [session flash & {:keys [message back-link back-msg]}]
   (let [
@@ -37,6 +38,20 @@
       :session session
       :body (cbtemplate/error-page session-info flash-msg error-msg back-link back-msg)
     }))
+
+(defn- admin-page
+  [session flash]
+  (let [
+    flash-msg flash
+    session-info (cbauth/make-session-info session)
+    is-first-time (cbauth/first-time?)
+    authorized (or is-first-time (cbauth/admin? session))]
+    (if authorized
+      {
+        :session session
+        :body (cbtemplate/admin-page session-info flash-msg is-first-time)
+      }
+      (response-403 session flash :message "You must first log in to view the control panel."))))
 
 
 ;; APP ROUTES
@@ -97,7 +112,15 @@
         :session (cbsession/session-with-return-url session uri)
       }))
 
-  ;; ADMIN FUNCTIONALITY
+  ;; ADMIN (GENERAL)
+  (GET "/admin"
+    {session :session, params :params, flash :flash, uri :uri}
+    (admin-page session flash))
+
+  (POST "/admin/first-time"
+    {session :session, params :params, flash :flash, uri :uri}
+    (cbauth/post-first-time session params))
+
   (POST "/admin/login"
     {session :session, params :params, flash :flash, uri :uri}
     (cbauth/post-login session params))
@@ -106,6 +129,7 @@
     {session :session, params :params, flash :flash, uri :uri}
     (cbauth/post-logout session params))
 
+  ;; ADMIN (BLOG)
   (GET ["/admin/edit/post/:id" :id #"[0-9]+"]
     {session :session, params :params, flash :flash, uri :uri}
     (let [

@@ -9,28 +9,62 @@
     [clojure.set :as cset]
     [clojure.data :as data]))
 
-; Database initialization
+;; Database initialization
 (def server1-conn {:pool {} :spec {}})
 (defmacro wcar* [& body] `(car/wcar server1-conn ~@body))
 
-; Forward declarations
+;; Forward declarations
 (declare tags-for-post-key)
 (declare set-tags-for-post!)
+(declare hash-for-username)
+
+;; Convenience macros
+(defmacro op-get-or-nil* [operation]
+  "Perform a checked get-type operation and return the result, or nil if the operation fails"
+  `(try ~operation (catch Exception e# nil)))
+
+(defmacro op-set-or-false* [operation]
+  "Perform a checked set-type operation and return true if it succeeded, false if an exception was thrown"
+  `(try (`do ~operation true) (catch Exception e# false)))
+
+
+;; SECURITY API
+(defn blog-has-accounts? []
+  "Returns false if there are no accounts configured for the blog. Returns true if there are, or if there was a
+  database error (this is to fail-safe certain operations that can only happen if the blog hasn't been configured
+  yet)."
+  (let [
+    acct-count (op-get-or-nil* (wcar* (car/hlen :account-map)))]
+    (or (nil? acct-count) (> acct-count 0))))
+
+(defn username-exists? [username]
+  "Check for the existence of a username"
+  (not (nil? (hash-for-username username))))
+
+(defn add-account [username pwhash]
+  "Add an account to the database. Returns true if the add succeded, false otherwise"
+  (if (not (username-exists? username))
+    (op-set-or-false* (wcar* (car/hset :account-map username pwhash) (car/bgsave)))
+    false))
+
+(defn hash-for-username [username]
+  "Get the scrypt hash for a given username, or nil if the username is invalid"
+  (op-get-or-nil* (wcar* (car/hget :account-map username))))
+
 
 ;; POSTS API
 (defn- post-base-key [post-id] 
   (apply str ["post:" post-id]))
 
+(defn total-post-count []
+  (try (wcar* (car/llen :post-list)) (catch Exception e 0)))
+
 (defn get-post [post-id]
   "Get a blog post (as post-map) from redis based on the post ID, or nil if it doesn't exist." 
   (let [
-    raw-map (try 
-      (wcar* 
-        (car/parse-map 
-          (car/hgetall 
-            (post-base-key post-id)))) (catch Exception e nil))
+    raw-map (op-get-or-nil* (wcar* (car/parse-map (car/hgetall (post-base-key post-id)))))
     tag-list-key (tags-for-post-key post-id)
-    tags (try (wcar* (car/lrange tag-list-key 0 -1)) (catch Exception e nil))]
+    tags (op-get-or-nil* (wcar* (car/lrange tag-list-key 0 -1)))]
     (when raw-map
       (assoc (cbutil/map-function-on-map-keys raw-map keyword) :post-tags (reverse tags)))))
 
@@ -107,7 +141,7 @@
     hash-key (post-base-key post-id)
     key-exists (= 1 (wcar* (car/exists hash-key)))
     tag-list-key (tags-for-post-key post-id)
-    tags (try (wcar* (car/lrange tag-list-key 0 -1)) (catch Exception e nil))]
+    tags (op-get-or-nil* (wcar* (car/lrange tag-list-key 0 -1)))]
     (if key-exists
       (do
         (wcar* 
@@ -134,7 +168,7 @@
 
 (defn get-all-metadata []
   "Get metadata for all posts"
-  (let [all-ids (try (wcar* (car/lrange :post-list 0 -1)) (catch Exception e nil))]
+  (let [all-ids (op-get-or-nil* (wcar* (car/lrange :post-list 0 -1)))]
     (when all-ids (get-metadata-for-ids all-ids))))
 
 
@@ -169,7 +203,7 @@
   (let [
     valid (cbtags/tag-valid? tag-name)
     k (when valid (posts-for-tag-key tag-name))]
-    (when k (try (wcar* (car/lrange k 0 -1)) (catch Exception e nil)))))
+    (when k (op-get-or-nil* (wcar* (car/lrange k 0 -1))))))
 
 (defn get-posts-for-tag [tag-name]
   (get-posts-for-ids (post-ids-for-tag tag-name)))

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Blog Title</title>
+  </head>
+  <body>
+    <div class="nav"></div>
+    <div class="flash"></div>
+    <h2>Settings</h2>
+    <div id="first-time">
+      First-time setup: create an administrator account.
+      <form action="/admin/first-time" method="post">
+        <div>Username: <input type="text" name="new-username" placeholder="At least 4 characters" /></div>
+        <div>Password: <input type="text" name="new-password" placeholder="At least 8 characters" /></div>
+        <div><button name="new-account" type="submit">Create Account</button></div>
+      </form>
+    </div>
+    <div class="footer"></div>
+  </body>
+</html>

@@ -133,6 +133,15 @@
   [flash-msg]
   [:span#flash-message] (html/content (if flash-msg flash-msg "(no message)")))
 
+;; Template for the admin page
+(html/deftemplate admin-page "admin.html"
+  [session-info-map flash-msg is-first-time]
+  [:title] (html/content "Control Panel")
+  [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
+  [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
+  [:div#first-time] (only-if is-first-time)
+  [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
+
 ;; Template for the error page
 (html/deftemplate error-page "error.html"
   [session-info-map flash-msg error-msg back-link back-msg]
@@ -199,28 +208,32 @@
 
 ;; Template for the multiple-post blog page
 (html/deftemplate blog-page "blog.html"
-  [session-info-map flash-msg post-id-list post-map-list prev-url prev-description current-nav-description next-url next-description]
+  [session-info-map flash-msg post-id-list post-map-list no-posts-msg prev-url prev-description current-nav-description next-url next-description]
   [:title] (html/content cbsettings/blog-title)
   [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
   [:div.posts] (html/html-content (reduce str (map #(invoke-post-snippet session-info-map false %1 %2) post-id-list post-map-list)))
+  [:div.posts] (if (empty? post-map-list) (html/content no-posts-msg) (no-change))
   [:a#blog-prev-link] (html/set-attr :href prev-url)
   [:a#blog-prev-link] (html/content prev-description)
   [:span.has-prev] (only-if prev-url)
   [:a#blog-next-link] (html/set-attr :href next-url)
   [:a#blog-next-link] (html/content next-description)
   [:span.has-next] (only-if next-url)
-  [:span#blog-current] (html/content (if current-nav-description current-nav-description "-"))
+  [:span#blog-current] (when current-nav-description (html/content current-nav-description))
+  [:div.blog-nav] (only-if (seq post-map-list))
+  [:br#blog-nav-separator] (only-if (seq post-map-list))
   [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
 
 ;; Template for the archive page
 (html/deftemplate archive-page "archive.html"
   [session-info-map flash-msg metadata-list no-posts-msg]
   [:title] (html/content (reduce str ["Archives - " cbsettings/blog-title]))
-  [:div#no-posts] (when (= (count metadata-list) 0) (html/content no-posts-msg))
+  [:div#no-posts] (when (empty? metadata-list) (html/content no-posts-msg))
   [:div.nav] (html/html-content (invoke-header-snippet session-info-map))
   [:div.flash] (when flash-msg (html/html-content (reduce str (html/emit* (flash-snippet flash-msg)))))
-  [:div.archive] (when (> (count metadata-list) 0) (html/html-content (reduce str (map #(invoke-archive-snippet session-info-map %) metadata-list))))
+  [:ul#archive-posts-list] (only-if (seq metadata-list))
+  [:div.archive] (when (seq metadata-list) (html/html-content (reduce str (map #(invoke-archive-snippet session-info-map %) metadata-list))))
   [:div.footer] (html/html-content (invoke-footer-snippet session-info-map)))
 
 ;; Template for the blog post composer page
