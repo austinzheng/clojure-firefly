@@ -1,6 +1,6 @@
 (defproject clojure-blog "0.1.0-SNAPSHOT"
   :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :url "https://github.com/austinzheng/clojure-firefly/"
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [compojure "1.1.6"]
                  [enlive "1.1.5"]

@@ -25,7 +25,7 @@
 
 (defmacro op-set-or-false* [operation]
   "Perform a checked set-type operation and return true if it succeeded, false if an exception was thrown"
-  `(try (`do ~operation true) (catch Exception e# false)))
+  `(try (do ~operation true) (catch Exception e# false)))
 
 
 ;; SECURITY API

@@ -61,6 +61,13 @@
       flash
       r/home-route))
 
+  ;; ABOUT
+  (GET "/about/" {session :session, flash :flash} (ss/redirect session flash "/about"))
+  (GET "/about"
+    {session :session, flash :flash}
+    ; TODO: Implement me
+    "Not yet implemented")
+
   ;; BLOG
   (GET "/blog/" {session :session, flash :flash} (ss/redirect session flash "/blog"))
   (GET "/blog"
@@ -125,6 +132,17 @@
   (GET "/admin/logout" 
     {session :session, params :params, flash :flash, uri :uri}
     (auth/post-logout session params))
+
+  ;; ADMIN (ABOUT)
+  (GET "/admin/edit/about"
+    {session :session, params :params, flash :flash, uri :uri}
+    ; TODO
+    "Not yet implemented")
+
+  (POST "/admin/submit/about"
+    {session :session, params :params, flash :flash, uri :uri}
+    ; TODO
+    "Not yet implemented")
 
   ;; ADMIN (BLOG)
   (GET ["/admin/edit/post/:id" :id #"[0-9]+"]

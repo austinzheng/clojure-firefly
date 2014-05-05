@@ -2,6 +2,15 @@
 
 A lightweight personal blog and link curation engine, implemented in (surprise) Clojure.
 
+## Features
+
+- Lightweight blog
+- View a single entry, a page of entries, or an compact 'archive' list of blog entries
+- For adding, removing or editing entries, built-in blog post editor with preview functionality
+- Add tags to blog posts; click on a tag to show all posts with that tag
+- Log in as administrator to manage blog
+- Redis integration
+
 ## Prerequisites
 
 You will need [Leiningen][1] 1.7.0 or above installed.
@@ -15,15 +24,6 @@ As well, you need a default instance of Redis running on the local machine. The 
 To start a web server for the application, run:
 
     lein ring server
-
-## Features
-
-- Integration with redis
-- View either a single blog post or any range of posts
-- View a compact list of all posts ('archive')
-- Create, edit, preview, and delete blog posts
-- Add tags to blog posts; users can see all posts for a tag
-- Log in as administrator to manage blog
 
 ## To Be Done
 
