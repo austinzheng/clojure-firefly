@@ -7,7 +7,7 @@
     [clojure-blog.tags :as tags]
     [clojure-blog.session :as ss]
     [clojure-blog.blog-database :as db]
-    [clojure-blog.blog-templates :as bt]
+    [clojure-blog.blog-template :as bt]
     [clojure-blog.template :as t]
     [clojure-blog.auth :as auth]
     [clojure-blog.routes :as r]

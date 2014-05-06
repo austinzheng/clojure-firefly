@@ -7,9 +7,7 @@
   (:require 
     [taoensso.carmine :as car :refer (wcar)]))
 
-;; Forward declarations
 (declare hash-for-username)
-
 
 ;; API (security)
 (defn blog-has-accounts? []

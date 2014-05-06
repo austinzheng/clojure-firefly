@@ -2,7 +2,7 @@
 ;; Copyright (c) 2014 Austin Zheng
 ;; Released under the terms of the MIT License
 
-(ns clojure-blog.blog-templates
+(ns clojure-blog.blog-template
   (:use clojure-blog.template)
   (:require
     [clojure-blog.tags :as tags]

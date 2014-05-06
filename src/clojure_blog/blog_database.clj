@@ -12,10 +12,8 @@
     [clj-time.coerce :as time-coerce]
     [clojure.set :as cset]))
 
-;; Forward declarations
 (declare tags-for-post-key)
 (declare set-tags-for-post!)
-
 
 ;; API (posts)
 (defn- post-base-key [post-id] 
