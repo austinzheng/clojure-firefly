@@ -1,8 +1,12 @@
+;; blog.clj (clojure-firefly)
+;; Copyright (c) 2014 Austin Zheng
+;; Released under the terms of the MIT License
+
 (ns clojure-blog.blog
   (:require
     [clojure-blog.tags :as tags]
     [clojure-blog.session :as ss]
-    [clojure-blog.database :as db]
+    [clojure-blog.blog-database :as db]
     [clojure-blog.blog-templates :as bt]
     [clojure-blog.template :as t]
     [clojure-blog.auth :as auth]
@@ -202,10 +206,10 @@
     start (util/parse-integer raw-start)
     n (util/parse-integer raw-number)
     no-posts (= 0 (db/total-post-count))
-    [post-map-list {:keys [id-seq raw-count]}] (when (and start n) (db/get-posts start n))
-    post-count (if no-posts 0 raw-count)]
+    [post-map-list {:keys [id-seq post-count]}] (when (and start n) (db/get-posts start n))
+    final-count (if no-posts 0 post-count)]
     (if (or no-posts post-map-list) 
-      (format-blog session-info flash-msg id-seq post-map-list start (count post-map-list) post-count)
+      (format-blog session-info flash-msg id-seq post-map-list start (count post-map-list) final-count)
       (t/error-page session-info flash-msg "Could not retrieve the requested posts." nil nil))))
 
 (defn get-posts-for-tag [session-info flash-msg tag]

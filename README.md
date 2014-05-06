@@ -9,7 +9,7 @@ A lightweight personal blog and link curation engine, implemented in (surprise) 
 - For adding, removing or editing entries, built-in blog post editor with preview functionality
 - Add tags to blog posts; click on a tag to show all posts with that tag
 - Log in as administrator to manage blog
-- Redis integration
+- Redis as storage engine - easy backups, high performance
 
 ## Prerequisites
 

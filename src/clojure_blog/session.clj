@@ -1,3 +1,7 @@
+;; session.clj (clojure-firefly)
+;; Copyright (c) 2014 Austin Zheng
+;; Released under the terms of the MIT License
+
 (ns clojure-blog.session  
   (:require 
     [ring.util.response :as response]))

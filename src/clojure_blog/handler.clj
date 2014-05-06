@@ -1,3 +1,7 @@
+;; handler.clj (clojure-firefly)
+;; Copyright (c) 2014 Austin Zheng
+;; Released under the terms of the MIT License
+
 (ns clojure-blog.handler
   (:use compojure.core)
   (:require 

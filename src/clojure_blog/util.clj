@@ -1,3 +1,7 @@
+;; util.clj (clojure-firefly)
+;; Copyright (c) 2014 Austin Zheng
+;; Released under the terms of the MIT License
+
 (ns clojure-blog.util
   (:require
     [clojure-blog.settings :as settings]
