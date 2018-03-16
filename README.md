@@ -2,6 +2,8 @@
 
 A lightweight personal blog and link curation engine, implemented in (surprise) Clojure.
 
+**WARNING**: This is proof-of-concept software; **don't use it for anything that actually matters.**
+
 ## Features
 
 - Lightweight blog
